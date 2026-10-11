@@ -150,3 +150,10 @@ Der Simulator ersetzt die CircuitPython-Module durch Nachbauten und das Laufwerk
 ein temporäres Verzeichnis. Die Weboberfläche läuft echt, ein Neustart nach dem
 Speichern startet den Prozess mit `boot.py` neu. `hid_fehler.txt` im Simulationsordner
 meldet Reports, deren Länge nicht zum Descriptor passt.
+
+## Lizenz
+
+UniversalGC steht unter der **GNU General Public License v3.0 oder neuer** (siehe
+[`LICENSE`](LICENSE)). Nutzen, ändern und weitergeben ist erlaubt, auch kommerziell –
+wer die Firmware aber weitergibt, etwa auf verkauften Geräten, muss den vollständigen
+Quellcode seiner Version unter derselben Lizenz mitliefern.

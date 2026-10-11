@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Simulator: boot.py und code.py auf dem PC laufen lassen.
 
     python3 tests/sim.py [preset]        (Port: SIM_PORT, Standard 8765)

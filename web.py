@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # web.py - Access Point und Weboberflaeche
 #
 # Alle Sockets laufen nicht blockierend. Waehrend auf einen Browser gewartet

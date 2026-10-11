@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # tele.py - Telemetrie von SimHub ueber den zweiten seriellen Kanal
 #
 # Format wie bisher bei Pedalen und Buttonbox, eine Zeile je Aktualisierung:

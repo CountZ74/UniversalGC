@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # ble_hid.py - derselbe HID-Report zusaetzlich ueber Bluetooth LE
 #
 # Geht nur auf Chips mit BLE in CircuitPython: ESP32-S3, nRF52840. Der Pico W

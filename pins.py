@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # pins.py - welche Pins hat dieses Board, und was koennen sie?
 #
 # Die Pinnamen in device.json sind die Namen aus dem board-Modul (GP2 beim

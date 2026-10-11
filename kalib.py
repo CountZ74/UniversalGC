@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # kalib.py - Kalibrierung und Kennlinien aller Achsen
 #
 # Keine Hardware-Importe - die Tests laufen auf dem PC.

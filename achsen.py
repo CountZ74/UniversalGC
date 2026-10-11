@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # achsen.py - Achsen lesen: Poti/Hall, AS5600, Waegezelle (HX711), Encoder
 #
 # Jede Achse liefert einen Rohwert; was daraus wird (Kalibrierung, Totzone,

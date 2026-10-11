@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # leds.py - einfache LEDs und WS2812-Streifen
 #
 # Einfache LEDs (aus der Buttonbox): jede LED hat zwei Logikausdruecke.

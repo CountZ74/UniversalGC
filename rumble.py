@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # rumble.py - Vibrationsmotoren an DRV8871 (aus den Pedalen v9.7)
 #
 # Angesteuert im "slow decay"-Verfahren: IN1 liegt fest an, IN2 bekommt die

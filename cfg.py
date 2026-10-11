@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # cfg.py - Geraetekonfiguration von UniversalGC
 #
 # Ein Geraet - Pedale, Buttonbox, Lenkrad, Flugsim-Panel, Arcade-Stick - wird komplett durch device.json

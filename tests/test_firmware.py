@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests fuer die universelle Firmware - laufen mit normalem Python auf dem PC.
 
     python3 tests/test_firmware.py      (oder pytest)

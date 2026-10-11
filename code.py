@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 UniversalGC v1.0 - universelle Gamecontroller-Firmware fuer CircuitPython
 =========================================================================

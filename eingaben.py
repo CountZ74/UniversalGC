@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # eingaben.py - Taster, Tastenmatrix, Schieberegister und Encoder
 #
 # Gelesen wird ueber das keypad-Modul von CircuitPython. Es tastet die Pins im

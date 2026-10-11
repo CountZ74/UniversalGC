@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # boot.py - UniversalGC, universelle Gamecontroller-Firmware
 #
 # Liest device.json und meldet das Geraet passend dazu am USB an: Name, PID,

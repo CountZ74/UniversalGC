@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 # logik.py - Logikausdruecke aus der Buttonbox, fuer alle Geraete
 #
 # Funktionen  AND(x,y,...)  OR(x,y,...)  NOT(x)
