@@ -19,6 +19,7 @@ Rumble im slow-decay-Verfahren, Logikbuttons – sind übernommen. Verweise wie
 | Schieberegister | 74HC165-Ketten, je 8 Eingänge, für viele Tasten an wenigen Pins |
 | Encoder | je Raste ein Tastendruck rechts/links, schnelles Drehen wird gepuffert; oder als Achse |
 | Achsen (16 bit) | Poti/Hall, AS5600 (Wraparound), Wägezelle HX711 (PIO auf dem Pico), Encoder |
+| HID-Achsen | X, Y, Z, Rx, Ry, Rz, Slider, Dial – oder Simulation Controls: Gas, Bremse, Kupplung, Lenkung, Schubhebel, Seitenruder, Fußbremse, Quer-/Höhenruder, Kollektiv |
 | Kennlinien | je Achse im Browser zeichnen |
 | Logikbuttons | `AND(b9,b10,NOT(motor))`, `GT(rpm,7000)`, `GT(a0,90)` … mit SimHub-Telemetrie |
 | LEDs | Dauerlicht/Blinken per Logikausdruck |
@@ -31,6 +32,16 @@ Rumble im slow-decay-Verfahren, Logikbuttons – sind übernommen. Verweise wie
 
 Für allgemeine Gamecontroller (siehe Issues): mittenzentrierte Achsen für Joysticks und
 Thumbsticks, Hat-Switch/POV, Shift-Ebene, Ausgabe als Tastatur/Maus.
+
+## Simulation Controls oder Rx/Ry/Rz?
+
+Jede Achse kann sich als normale Joystick-Achse (X … Rz, Slider) oder als
+*Simulation Control* melden (`"usage": "brake"` usw., im Browser „Sim: Bremse“). Letzteres
+beschreibt Pedale und Lenkrad treffender, aber nicht jedes Spiel wertet diese Achsen aus,
+und Windows ordnet sie anders zu. Vorgabe in den Vorlagen bleibt deshalb Rx/Ry/Rz – das
+läuft nachweislich. Zum Ausprobieren die HID-Achse im Browser umstellen, speichern, im
+Spiel testen; bei Problemen zurückstellen. Wie bei jeder Änderung am Aufbau die Achsen im
+Spiel danach neu zuordnen.
 
 ## Welcher Chip?
 

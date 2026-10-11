@@ -23,13 +23,32 @@ AXIS_MAX   = 65535
 MAX_BUTTONS = 128
 MAX_AXES    = 8
 
-# HID-Usages der Achsen (Generic Desktop). "slider" darf zweimal vorkommen,
-# Windows zeigt dann zwei Schieberegler.
+# HID-Usages der Achsen: Name -> (Usage Page, Usage).
+#
+# Generic Desktop (0x01) versteht jedes Spiel und Windows zuverlaessig - das
+# ist der Normalfall. Die Pedale laufen seit v9.8 mit Rx/Ry/Rz.
+#
+# Simulation Controls (0x02) beschreiben das Geraet treffender: ein Spiel, das
+# sie auswertet, erkennt Bremse und Gas von selbst. Wie Windows und die
+# einzelnen Spiele sie zuordnen, ist aber uneinheitlich - je Spiel testen und
+# bei Problemen zurueck auf Rx/Ry/Rz. Ausprobiert wurde das schon einmal im
+# Pedal-Branch v9.6b-sim-controls (ungetestet geblieben).
+#
+# "slider" und "toebrake" duerfen zweimal vorkommen (zwei Schieberegler,
+# linke und rechte Fussbremse), alles andere nur einmal.
+GD = 0x01
+SIM = 0x02
 AXIS_USAGES = {
-    "x": 0x30, "y": 0x31, "z": 0x32,
-    "rx": 0x33, "ry": 0x34, "rz": 0x35,
-    "slider": 0x36, "dial": 0x37, "wheel": 0x38,
+    "x": (GD, 0x30), "y": (GD, 0x31), "z": (GD, 0x32),
+    "rx": (GD, 0x33), "ry": (GD, 0x34), "rz": (GD, 0x35),
+    "slider": (GD, 0x36), "dial": (GD, 0x37), "wheel": (GD, 0x38),
+    # Simulation Controls (HID Usage Tables, Page 0x02)
+    "aileron": (SIM, 0xB0), "collective": (SIM, 0xB5), "elevator": (SIM, 0xB8),
+    "rudder": (SIM, 0xBA), "throttle": (SIM, 0xBB), "toebrake": (SIM, 0xBF),
+    "accelerator": (SIM, 0xC4), "brake": (SIM, 0xC5), "clutch": (SIM, 0xC6),
+    "steering": (SIM, 0xC8),
 }
+DOPPELT_ERLAUBT = ("slider", "toebrake")
 
 # Joystick statt Gamepad ist der Normalfall: Automobilista 2 und Project CARS
 # steuern ihr Menue ueber die X/Y-Achsen von Gamepads (siehe Pedale v9.8).
@@ -213,7 +232,24 @@ def buttons_im_report(c):
 
 
 def axis_usages(c):
-    return [AXIS_USAGES.get(str(a.get("usage", "")).lower(), 0x30) for a in c["axes"]]
+    """Liste (Usage Page, Usage) in Achsreihenfolge. Unbekanntes wird X."""
+    return [AXIS_USAGES.get(str(a.get("usage", "")).lower(), (GD, 0x30))
+            for a in c["axes"]]
+
+
+def _bloecke(usages):
+    """Aufeinanderfolgende Achsen derselben Usage Page zusammenfassen.
+
+    Der Report bleibt in Achsreihenfolge; nur wo die Page wechselt, beginnt im
+    Descriptor ein neuer Block mit eigener Usage Page.
+    """
+    out = []
+    for page, u in usages:
+        if out and out[-1][0] == page:
+            out[-1][1].append(u)
+        else:
+            out.append((page, [u]))
+    return out
 
 
 def descriptor(c):
@@ -244,15 +280,15 @@ def descriptor(c):
             0x95, n_btn,         #   Report Count (n)
             0x81, 0x02,          #   Input (Data, Variable, Absolute)
         )))
-    if usages:
-        d.extend(bytes((0x05, 0x01)))    # Usage Page (Generic Desktop)
-        for u in usages:
-            d.extend(bytes((0x09, u)))   # Usage (X, Rx, Slider ...)
+    for page, liste in _bloecke(usages):
+        d.extend(bytes((0x05, page)))    # Usage Page (Generic Desktop / Simulation)
+        for u in liste:
+            d.extend(bytes((0x09, u)))   # Usage (X, Rx, Brake ...)
         d.extend(bytes((
             0x15, 0x00,                    #   Logical Minimum (0)
             0x27, 0xFF, 0xFF, 0x00, 0x00,  #   Logical Maximum (65535)
             0x75, 0x10,                    #   Report Size (16)
-            0x95, len(usages),             #   Report Count
+            0x95, len(liste),              #   Report Count
             0x81, 0x02,                    #   Input (Data, Variable, Absolute)
         )))
     d.append(0xC0)               # End Collection
@@ -367,7 +403,7 @@ def validate(c, pin_id=None, analog_ok=None):
         elif t == "encoder" and not (a.get("a") and a.get("b")):
             f.append("Achse %d: Encoder braucht A und B" % (i + 1))
     for u, n in zaehl.items():
-        if n > (2 if u == "slider" else 1):
+        if n > (2 if u in DOPPELT_ERLAUBT else 1):
             f.append("HID-Achse %s %dx vergeben" % (u, n))
 
     for i, e in enumerate(c["encoders"]):

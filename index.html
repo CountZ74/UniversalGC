@@ -492,6 +492,13 @@ async function kSave(){const b=$('sbtn');b.textContent='…';const d=await post(
 /* Das Formular arbeitet direkt auf K, einer Kopie von device.json. Jedes Feld
    traegt in data-p den Pfad, unter dem sein Wert in K steht. */
 const USAGES=['x','y','z','rx','ry','rz','slider','dial','wheel'];
+/* Simulation Controls: beschreiben das Gerät treffender, werden aber nicht von
+   jedem Spiel gleich zugeordnet - je Spiel testen, bei Problemen zurück auf Rx/Ry/Rz. */
+const SIM_USAGES=[['accelerator','Sim: Gas'],['brake','Sim: Bremse'],['clutch','Sim: Kupplung'],
+  ['steering','Sim: Lenkung'],['throttle','Sim: Schubhebel'],['rudder','Sim: Seitenruder'],
+  ['toebrake','Sim: Fußbremse'],['aileron','Sim: Querruder'],['elevator','Sim: Höhenruder'],
+  ['collective','Sim: Kollektiv']];
+const USAGE_OPTS=USAGES.map(u=>[u,u.toUpperCase().replace('SLIDER','Slider').replace('DIAL','Dial').replace('WHEEL','Wheel')]).concat(SIM_USAGES);
 function pinOpts(sel,analog){
   let h='<option value="">–</option>',da=false;
   for(const p of I.pins){
@@ -564,10 +571,12 @@ function bauForm(){
     '<div class="row c4">'+numF('encoders.'+i+'.btn','erste Button-Nr.')+selF('encoders.'+i+'.divisor','Flanken/Raste',[1,2,4])+numF('encoders.'+i+'.pulse_ms','Impuls ms')+chkF('encoders.'+i+'.reverse','umkehren')+'</div></div>';});
   h+='<button class="btn s" style="width:100%" onclick="dazu(\'encoders\',{a:\'\',b:\'\',divisor:4,pulse_ms:30})">+ Encoder</button></div>';
 
-  h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>';
+  h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>'+
+    '<div class="sub" style="margin:4px 0 6px">HID-Achse „Sim: …“ = Simulation Controls. Beschreibt Pedale und Lenkrad treffender, '+
+    'wird aber nicht von jedem Spiel erkannt – ausprobieren, bei Problemen zurück auf Rx/Ry/Rz.</div>';
   K.axes.forEach((a,i)=>{const t=a.type||'pot',p='axes.'+i+'.';
     h+='<div class="item">'+kopf('Achse '+(i+1),'axes',i)+
-    '<div class="row c3">'+selF(p+'type','Typ',[['pot','Poti / Hall'],['as5600','AS5600 (Winkel)'],['hx711','Wägezelle HX711'],['encoder','Encoder']])+selF(p+'usage','HID-Achse',USAGES)+txtF(p+'name','Name')+'</div>';
+    '<div class="row c3">'+selF(p+'type','Typ',[['pot','Poti / Hall'],['as5600','AS5600 (Winkel)'],['hx711','Wägezelle HX711'],['encoder','Encoder']])+selF(p+'usage','HID-Achse',USAGE_OPTS)+txtF(p+'name','Name')+'</div>';
     if(t==='hx711')h+='<div class="row c4">'+pinF(p+'dt','DT')+pinF(p+'sck','SCK')+selF(p+'mode','Auslesen',[['pio','PIO (Pico)'],['bitbang','Bit-Banging']])+numF(p+'filter','Filter')+'</div>';
     else if(t==='encoder')h+='<div class="row c4">'+pinF(p+'a','A')+pinF(p+'b','B')+numF(p+'steps','Rasten 0→100 %')+chkF(p+'center','Start in der Mitte')+'</div>';
     else h+='<div class="row c3">'+pinF(p+'pin','Pin',true)+numF(p+'deadzone','Totzone %')+numF(p+'margin','Reserve %')+'</div>';

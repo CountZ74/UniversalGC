@@ -168,6 +168,30 @@ def test_presets_descriptor():
     check("pedale: Joystick", usages[0] == 0x04)
 
 
+def test_simulation_controls():
+    c = cfg.normalize({"config_pin": "GP15", "axes": [
+        {"type": "pot", "pin": "GP26", "usage": "accelerator"},
+        {"type": "pot", "pin": "GP27", "usage": "brake"},
+        {"type": "pot", "pin": "GP28", "usage": "rx"},
+        {"type": "pot", "pin": "A3", "usage": "clutch"}]})
+    d = cfg.descriptor(c)
+    bits, usages, _ = descriptor_bits(d)
+    check("Sim: Reportlaenge passt", bits == cfg.report_laenge(c) * 8 == 64)
+    check("Sim: Usages in Achsreihenfolge", usages[1:] == [0xC4, 0xC5, 0x33, 0xC6])
+    seiten = [d[i + 1] for i in range(len(d) - 1) if d[i] == 0x05]
+    check("Sim: Usage Pages wechseln Sim/GD/Sim", seiten == [0x01, 0x02, 0x01, 0x02])
+    p = pins_fuer("rp2040")
+    c2 = cfg.normalize({"config_pin": "GP15", "axes": [
+        {"type": "pot", "pin": "GP26", "usage": "brake"},
+        {"type": "pot", "pin": "GP27", "usage": "brake"}]})
+    f = cfg.validate(c2, p.pin_id, p.analog_ok)
+    check("Sim: Bremse doppelt erkannt", any("2x" in x for x in f))
+    c3 = cfg.normalize({"config_pin": "GP15", "axes": [
+        {"type": "pot", "pin": "GP26", "usage": "toebrake"},
+        {"type": "pot", "pin": "GP27", "usage": "toebrake"}]})
+    check("Sim: zwei Fussbremsen erlaubt", not cfg.validate(c3, p.pin_id, p.analog_ok))
+
+
 def test_leeres_geraet():
     c = cfg.normalize({})
     check("leeres Geraet meldet 8 Buttons", cfg.buttons_im_report(c) == 8)
