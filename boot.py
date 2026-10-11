@@ -104,11 +104,8 @@ if einrichtung:
 elif wartungsmodus:
     meldungen.append("Wartungsmodus: CIRCUITPY sichtbar, Speichern aus")
 else:
-    # Laufwerk aus. Damit wird CIRCUITPY fuer das Geraet selbst beschreibbar.
-    try:
-        storage.disable_usb_drive()
-    except Exception as e:
-        meldungen.append("Laufwerk nicht abschaltbar: %s" % e)
+    # Laufwerk aus - aber erst ganz am Ende, nach den Ausgaben (siehe unten).
+    meldungen.append("Laufwerk wird abgeschaltet")
 
 # --- USB-Name ----------------------------------------------------------------
 #
@@ -169,3 +166,16 @@ try:
         print("  -", m)
 except OSError:
     pass            # boot_out.txt nicht schreibbar - das Geraet laeuft trotzdem
+
+# --- Laufwerk abschalten - als allerletzter Schritt -------------------------
+#
+# Damit wird CIRCUITPY fuer das Geraet selbst beschreibbar. Es steht bewusst
+# hinter allen Ausgaben: am Pico 2 W mit CircuitPython 10.3.1 endete boot.py
+# mit "OSError: [Errno 5]", und die Meldungen fehlten in boot_out.txt, sobald
+# das Laufwerk vorher abgeschaltet wurde. Im Einrichtungsmodus (Laufwerk an)
+# lief derselbe Code sauber durch.
+if not (einrichtung or wartungsmodus):
+    try:
+        storage.disable_usb_drive()
+    except Exception:
+        pass
