@@ -189,11 +189,19 @@ class App:
         from leds import Leds
         self.leds = Leds(c, self.pins.objekt, self.lg)
         self.fehler.extend(self.leds.fehler)
+        # Ohne eigene Status-LED die LED auf dem Board (Pico W: board.LED),
+        # sofern sie nicht anders belegt ist. Sie blinkt, solange der Access
+        # Point laeuft - so sieht man das auch ohne Konsole.
         self.status = None
-        if c.get("status_led"):
+        led_pin = c.get("status_led")
+        if not led_pin and hasattr(board, "LED"):
+            belegt = [n for n, _ in cfg.pins_belegt(c)]
+            if "LED" not in belegt:
+                led_pin = "LED"
+        if led_pin:
             try:
                 import digitalio
-                self.status = digitalio.DigitalInOut(self.pins.objekt(c["status_led"]))
+                self.status = digitalio.DigitalInOut(self.pins.objekt(led_pin))
                 self.status.direction = digitalio.Direction.OUTPUT
             except Exception as e:
                 self.fehler.append("Status-LED: %s" % e)
@@ -637,10 +645,16 @@ class App:
         self.ble.pause()
         try:
             self.web.starten()
+            self.ap_wunsch = False
             self.status_blinken(2, 0.1, 0.1)
         except Exception as e:
             print("WLAN-Start fehlgeschlagen:", e)
             self.ble.weiter()
+            if self.quelle == "default":
+                # Im Einrichtungsmodus ist der AP der einzige Zugang -
+                # in 10 Sekunden noch einmal.
+                self.ap_wunsch = True
+                self.ap_naechster = time.monotonic() + 10.0
 
     def wlan_beenden(self):
         if self.rumble:
@@ -656,6 +670,8 @@ class App:
         self.status_blinken(3)
         print("UniversalGC", VERSION, "-", self.c.get("name"),
               "- HID:", "ja" if self.hid else "NEIN", "- BLE:", self.ble.status())
+        self.ap_wunsch = False
+        self.ap_naechster = 0.0
         if self.quelle == "default":
             print("Keine device.json - Access Point startet von selbst")
             self.wlan_umschalten()
@@ -670,6 +686,9 @@ class App:
                 e = self.taster.events.get()
                 if e and e.pressed:
                     self.wlan_umschalten()
+
+            if self.ap_wunsch and not self.web.aktiv and now >= self.ap_naechster:
+                self.wlan_umschalten()
 
             if self.web.aktiv:
                 self.web.bedienen()

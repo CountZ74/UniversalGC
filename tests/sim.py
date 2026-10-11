@@ -295,7 +295,14 @@ mod("neopixel", NeoPixel=NeoPixel, GRB="GRB", RGB="RGB")
 
 # wifi / socketpool: echte Sockets auf localhost
 class Radio:
+    # SIM_AP_FEHLER=n: die ersten n Versuche von start_ap scheitern, wie es
+    # auf dem Pico nach einem Neuladen von code.py vorkommen kann.
+    fehler = int(os.environ.get("SIM_AP_FEHLER", "0"))
+
     def start_ap(self, ssid, password=None, channel=6):
+        if Radio.fehler > 0:
+            Radio.fehler -= 1
+            raise RuntimeError("AP-Start simuliert fehlgeschlagen")
         print("AP:", ssid, password)
 
     def stop_ap(self):

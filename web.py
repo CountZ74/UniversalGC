@@ -32,16 +32,43 @@ class Web:
         w = self.app.c["wifi"]
         pw = w.get("password") or None
         print("Starte AP", w.get("ssid"), "...")
-        wifi.radio.start_ap(ssid=w.get("ssid", "UniversalGC"), password=pw,
-                            channel=int(w.get("channel", 6)))
+        # CircuitPython startet code.py nach jeder kopierten Datei neu, der
+        # Funkchip behaelt dabei seinen Zustand. Ein AP aus dem vorigen Lauf
+        # wird deshalb erst beendet, und jeder Schritt bekommt drei Versuche.
+        try:
+            wifi.radio.stop_ap()
+        except Exception:
+            pass
+        self._versuche(lambda: wifi.radio.start_ap(
+            ssid=w.get("ssid", "UniversalGC"), password=pw,
+            channel=int(w.get("channel", 6))), "start_ap")
         self.pool = socketpool.SocketPool(wifi.radio)
-        self.sock = self.pool.socket(self.pool.AF_INET, self.pool.SOCK_STREAM)
-        self.sock.setsockopt(self.pool.SOL_SOCKET, self.pool.SO_REUSEADDR, 1)
-        self.sock.bind(("0.0.0.0", int(w.get("port", 80))))
-        self.sock.listen(4)              # Browser oeffnen mehrere Verbindungen
-        self.sock.setblocking(False)
+
+        def server():
+            s = self.pool.socket(self.pool.AF_INET, self.pool.SOCK_STREAM)
+            try:
+                s.setsockopt(self.pool.SOL_SOCKET, self.pool.SO_REUSEADDR, 1)
+                s.bind(("0.0.0.0", int(w.get("port", 80))))
+                s.listen(4)              # Browser oeffnen mehrere Verbindungen
+                s.setblocking(False)
+            except Exception:
+                s.close()
+                raise
+            self.sock = s
+
+        self._versuche(server, "Webserver")
         self.aktiv = True
         print("Webserver: http://192.168.4.1")
+
+    def _versuche(self, schritt, name, n=3):
+        for i in range(n):
+            try:
+                return schritt()
+            except Exception as e:
+                print("%s fehlgeschlagen (%d/%d): %s" % (name, i + 1, n, e))
+                if i == n - 1:
+                    raise
+                time.sleep(1)
 
     def beenden(self):
         try:
