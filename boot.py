@@ -12,12 +12,20 @@
 #
 # NOTAUSGANG: Konfigurationstaster beim Einstecken gedrueckt halten, dann
 # bleibt CIRCUITPY als Laufwerk sichtbar. Das Geraet kann dann nicht selbst
-# speichern, aber man kommt an alle Dateien heran.
+# speichern, aber man kommt an alle Dateien heran. Ohne Taster: in der
+# Weboberflaeche "Neustart mit Laufwerk" oder in der Konsole
+#     import merker; merker.wartung()
 #
 # RUECKFALL: Speichert die Weboberflaeche eine neue Belegung, bleibt die alte
 # als device.bak.json liegen und /cfg_pending wird angelegt. Laeuft code.py
 # danach 15 Sekunden sauber, loescht es die Markierung. Scheitert der Start
-# zweimal hintereinander, holt boot.py die alte Belegung zurueck.
+# zweimal hintereinander, meldet boot.py das Geraet mit der alten Belegung an,
+# und code.py kopiert sie zurueck.
+#
+# WICHTIG: boot.py schreibt NICHTS auf das Dateisystem. Waehrend es laeuft,
+# hat CircuitPython boot_out.txt offen. Mit storage.remount() und Schreiben
+# hier endete boot.py am echten Pico 2 W in "OSError: [Errno 5]" (vermutlich
+# genau deshalb). Was boot.py sich merken muss, steht im NVM (merker.py).
 
 import board
 import digitalio
@@ -26,6 +34,7 @@ import usb_hid
 import os
 
 import cfg
+import merker
 
 meldungen = []
 FEHLSTARTS_BIS_RUECKFALL = 2
@@ -39,10 +48,25 @@ def existiert(pfad):
         return False
 
 
-# --- Konfiguration -----------------------------------------------------------
+# --- Konfiguration, ggf. Rueckfall auf die alte ------------------------------
 
-c, quelle = cfg.load()
-if quelle != "device":
+rueckfall = merker.lesen(merker.RUECKFALL) == merker.R_MAGIC
+if existiert(cfg.PENDING_FILE) and not rueckfall:
+    if not merker.verfuegbar():
+        meldungen.append("kein NVM - Rueckfall auf alte Belegung nicht moeglich")
+    else:
+        n = merker.lesen(merker.FEHLSTARTS)
+        if n >= FEHLSTARTS_BIS_RUECKFALL and existiert(cfg.BACKUP_FILE):
+            rueckfall = True
+            merker.setzen(merker.RUECKFALL, merker.R_MAGIC)
+            merker.setzen(merker.FEHLSTARTS, 0)
+            meldungen.append("neue Belegung startete %dx nicht - alte wird "
+                             "zurueckgeholt" % n)
+        else:
+            merker.setzen(merker.FEHLSTARTS, n + 1)
+
+c, quelle = cfg.load(rueckfall)
+if quelle not in ("device", "rueckfall"):
     meldungen.append("device.json fehlt oder ist kaputt - benutze %s" % quelle)
 
 # --- Wartungsmodus? ----------------------------------------------------------
@@ -67,20 +91,11 @@ else:
         meldungen.append("Taster %s nicht lesbar: %s" % (pin, e))
         einrichtung = True
 
-# Wartungsmodus ohne Taster: die Weboberflaeche oder die Konsole legt /wartung
-# an und startet neu (siehe README). Die Markierung gilt nur fuer diesen einen
-# Start und wird gleich wieder geloescht.
-try:
-    os.stat(cfg.WARTUNG_FILE)
+# Wartungsmodus ohne Taster, angefordert ueber Weboberflaeche oder Konsole.
+# Gilt nur fuer diesen einen Start.
+if merker.lesen(merker.WARTUNG) == merker.W_MAGIC:
     wartungsmodus = True
-    try:
-        storage.remount("/", readonly=False)
-        os.remove(cfg.WARTUNG_FILE)
-        storage.remount("/", readonly=True)     # Laufwerk wieder fuer den PC
-    except Exception as e:
-        meldungen.append("Wartungs-Markierung nicht loeschbar: %s" % e)
-except OSError:
-    pass
+    merker.setzen(merker.WARTUNG, 0)
 
 if einrichtung:
     meldungen.append("Einrichtung: kein Konfigurationstaster - CIRCUITPY "
@@ -93,31 +108,6 @@ else:
         storage.disable_usb_drive()
     except Exception as e:
         meldungen.append("Laufwerk nicht abschaltbar: %s" % e)
-
-    # --- Rueckfall auf die letzte funktionierende Belegung -------------------
-    if existiert(cfg.PENDING_FILE):
-        try:
-            storage.remount("/", readonly=False)
-            try:
-                with open(cfg.PENDING_FILE) as f:
-                    versuche = int(f.read().strip() or "0")
-            except ValueError:
-                versuche = 0
-            if versuche >= FEHLSTARTS_BIS_RUECKFALL and existiert(cfg.BACKUP_FILE):
-                with open(cfg.BACKUP_FILE) as f:
-                    alt = f.read()
-                with open(cfg.CONFIG_FILE, "w") as f:
-                    f.write(alt)
-                os.remove(cfg.PENDING_FILE)
-                meldungen.append("neue Belegung startete %dx nicht - alte "
-                                 "zurueckgeholt" % versuche)
-                c, quelle = cfg.load()
-            else:
-                with open(cfg.PENDING_FILE, "w") as f:
-                    f.write(str(versuche + 1))
-            # Bewusst nicht wieder schreibgeschuetzt: code.py muss speichern.
-        except Exception as e:
-            meldungen.append("Rueckfall-Pruefung nicht moeglich: %s" % e)
 
 # --- USB-Name ----------------------------------------------------------------
 #
@@ -172,6 +162,9 @@ if c["telemetry"].get("enabled", True):
     except Exception as e:
         meldungen.append("Datenkanal nicht moeglich: %s" % e)
 
-print("boot.py:", c.get("name"), "(" + quelle + ")")
-for m in meldungen:
-    print("  -", m)
+try:
+    print("boot.py:", c.get("name"), "(" + quelle + ")")
+    for m in meldungen:
+        print("  -", m)
+except OSError:
+    pass            # boot_out.txt nicht schreibbar - das Geraet laeuft trotzdem

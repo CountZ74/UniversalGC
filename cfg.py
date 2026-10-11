@@ -17,7 +17,6 @@ import json
 CONFIG_FILE  = "/device.json"
 BACKUP_FILE  = "/device.bak.json"
 PENDING_FILE = "/cfg_pending"       # neue Konfiguration noch nicht bestaetigt
-WARTUNG_FILE = "/wartung"           # naechster Start einmalig mit Laufwerk
 
 REPORT_ID  = 4
 AXIS_MAX   = 65535
@@ -128,13 +127,18 @@ def _datei_lesen(pfad):
         return json.load(f)
 
 
-def load():
+def load(rueckfall=False):
     """device.json laden, bei Fehlern die Sicherung, zuletzt die Vorgaben.
 
-    Rueckgabe: (konfiguration, quelle) mit quelle "device", "backup" oder
-    "default". Bei "default" startet code.py den Access Point von selbst.
+    rueckfall=True nimmt gleich die Sicherung (die neue Belegung startete
+    nicht). Rueckgabe: (konfiguration, quelle) mit quelle "device", "backup",
+    "rueckfall" oder "default". Bei "default" startet code.py den Access Point
+    von selbst.
     """
-    for pfad, quelle in ((CONFIG_FILE, "device"), (BACKUP_FILE, "backup")):
+    reihe = ((CONFIG_FILE, "device"), (BACKUP_FILE, "backup"))
+    if rueckfall:
+        reihe = ((BACKUP_FILE, "rueckfall"), (CONFIG_FILE, "device"))
+    for pfad, quelle in reihe:
         try:
             return normalize(_datei_lesen(pfad)), quelle
         except (OSError, ValueError) as e:

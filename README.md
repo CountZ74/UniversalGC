@@ -67,7 +67,7 @@ Beim ESP32-S3 beachten:
    (Thonny ist dafür nicht nötig):
    ```
    device.json       Kopie der passenden Vorlage aus presets/ – ZUERST
-   cfg.py pins.py eingaben.py achsen.py kalib.py logik.py tele.py
+   cfg.py merker.py pins.py eingaben.py achsen.py kalib.py logik.py tele.py
    rumble.py leds.py ble_hid.py web.py index.html code.py
    presets/          (Ordner)
    lib/              siehe unten
@@ -127,7 +127,7 @@ aus. Ohne den Konfigurationstaster zu drücken geht es so:
 - Weboberfläche, Tab *Status*: **Neustart mit Laufwerk CIRCUITPY**, oder
 - in der Thonny-Shell (Strg+C, dann):
   ```python
-  open("/wartung", "w").close(); import microcontroller; microcontroller.reset()
+  import merker; merker.wartung()
   ```
 
 Das Gerät startet einmalig mit sichtbarem Laufwerk. Beim nächsten Einstecken ist alles

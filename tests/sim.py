@@ -48,7 +48,7 @@ if not ROOT:
     print("CIRCUITPY simuliert in", ROOT)
 
 GERAET = {"device.json", "device.bak.json", "cfg_pending", "calibration.json",
-          "logic.json", "rumble.json", "index.html", "presets", "fehler.txt", "wartung"}
+          "logic.json", "rumble.json", "index.html", "presets", "fehler.txt"}
 
 
 def _map(p):
@@ -60,10 +60,27 @@ def _map(p):
 
 
 _open, _stat, _listdir, _remove = builtins.open, os.stat, os.listdir, os.remove
-builtins.open = lambda p, *a, **k: _open(_map(p), *a, **k)
+BOOT_LAEUFT = [False]
+
+
+def _sim_open(p, mode="r", *a, **k):
+    # Wie auf dem Geraet: waehrend boot.py laeuft, ist das Laufwerk nicht
+    # fuer Python beschreibbar (boot_out.txt ist offen) - Errno 5.
+    if BOOT_LAEUFT[0] and _map(p) != p and any(c in mode for c in "wa+"):
+        raise OSError(5, "Eingabe-/Ausgabefehler (boot.py darf nicht schreiben)")
+    return _open(_map(p), mode, *a, **k)
+
+
+def _sim_remove(p):
+    if BOOT_LAEUFT[0] and _map(p) != p:
+        raise OSError(5, "Eingabe-/Ausgabefehler (boot.py darf nicht schreiben)")
+    return _remove(_map(p))
+
+
+builtins.open = _sim_open
 os.stat = lambda p, *a, **k: _stat(_map(p), *a, **k)
 os.listdir = lambda p=".": _listdir(_map(p))
-os.remove = lambda p: _remove(_map(p))
+os.remove = _sim_remove
 
 # --- Nachbauten --------------------------------------------------------------
 
@@ -98,13 +115,24 @@ board.A0, board.A1, board.A2 = board.GP26, board.GP27, board.GP28
 board.LED = Pin("LED")
 
 
+# NVM ueberlebt den Neustart - wie auf dem Geraet (geloescht = 0xFF)
+NVM_DATEI = os.path.join(ROOT, "nvm.bin")
+try:
+    with _open(NVM_DATEI, "rb") as f:
+        nvm = bytearray(f.read())
+except OSError:
+    nvm = bytearray(b"\xff" * 256)
+
+
 def reset():
     print("\n*** microcontroller.reset() - Neustart ***\n", flush=True)
+    with _open(NVM_DATEI, "wb") as f:
+        f.write(nvm)
     sys.stdout.flush()
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
-mod("microcontroller", pin=mc_pin, reset=reset)
+mod("microcontroller", pin=mc_pin, reset=reset, nvm=nvm)
 mod("supervisor", set_usb_identification=lambda **kw: print("USB:", kw))
 mod("storage", disable_usb_drive=lambda: None, remount=lambda *a, **k: None)
 import gc as gc_mod
@@ -340,6 +368,8 @@ except (OSError, ValueError):
     pass
 
 print("=== boot.py ===")
+BOOT_LAEUFT[0] = True
 exec(compile(_open(os.path.join(FW, "boot.py")).read(), "boot.py", "exec"), {"__name__": "boot"})
+BOOT_LAEUFT[0] = False
 print("=== code.py ===")
 exec(compile(_open(os.path.join(FW, "code.py")).read(), "code.py", "exec"), {"__name__": "code"})

@@ -32,7 +32,7 @@ die Rumble-Motoren. Ohne device.json startet der Access Point von selbst.
 
 Dateien auf CIRCUITPY
 ---------------------
-  boot.py code.py cfg.py pins.py eingaben.py achsen.py kalib.py logik.py
+  boot.py code.py cfg.py merker.py pins.py eingaben.py achsen.py kalib.py logik.py
   tele.py rumble.py leds.py ble_hid.py web.py index.html
   device.json          die Belegung (aus presets/ kopieren oder im Browser)
   presets/*.json       Vorlagen fuer Pedale, Buttonbox, Lenkrad
@@ -48,6 +48,7 @@ import os
 import json
 
 import cfg
+import merker
 import kalib
 import logik
 from tele import Telemetrie
@@ -109,7 +110,10 @@ class App:
         import usb_hid
         from pins import Pins
 
-        self.c, self.quelle = cfg.load()
+        # Muss dieselbe Belegung sein, mit der boot.py das Geraet angemeldet
+        # hat - im Rueckfall also die Sicherung (siehe rueckfall_anwenden).
+        self.c, self.quelle = cfg.load(
+            merker.lesen(merker.RUECKFALL) == merker.R_MAGIC)
         c = self.c
         self.pins = Pins(board)
         self.fehler = []
@@ -546,6 +550,7 @@ class App:
                 json.dump(neu, f)
             with open(cfg.PENDING_FILE, "w") as f:
                 f.write("0")
+            merker.setzen(merker.FEHLSTARTS, 0)
         except OSError as e:
             return {"ok": False, "f": ["Speichern fehlgeschlagen: %s" % e]}
         self.neustart_bei = time.monotonic() + 1.0
@@ -554,18 +559,14 @@ class App:
 
     def wartung_anfordern(self):
         """Beim naechsten Start bleibt CIRCUITPY sichtbar (einmalig)."""
-        try:
-            with open(cfg.WARTUNG_FILE, "w") as f:
-                f.write("1")
-            return True
-        except OSError:
-            return False
+        return merker.setzen(merker.WARTUNG, merker.W_MAGIC)
 
     def bestaetigen(self, now):
         """Neue Belegung laeuft sauber - Rueckfall-Markierung loeschen."""
         if self.start_zeit is None or now - self.start_zeit < BESTAETIGT_NACH:
             return
         self.start_zeit = None
+        merker.setzen(merker.FEHLSTARTS, 0)
         if existiert(cfg.PENDING_FILE):
             try:
                 os.remove(cfg.PENDING_FILE)
@@ -688,8 +689,29 @@ class App:
             self.bestaetigen(now)
 
 
+def rueckfall_anwenden():
+    """boot.py hat wegen wiederholter Fehlstarts die Sicherung angemeldet.
+    Sie wird jetzt wieder zur device.json - boot.py selbst darf nicht
+    schreiben. Klappt das nicht (Wartungsmodus), bleibt der Merker stehen und
+    der naechste Start versucht es erneut."""
+    if merker.lesen(merker.RUECKFALL) != merker.R_MAGIC:
+        return
+    try:
+        with open(cfg.BACKUP_FILE) as f:
+            alt = f.read()
+        with open(cfg.CONFIG_FILE, "w") as f:
+            f.write(alt)
+        if existiert(cfg.PENDING_FILE):
+            os.remove(cfg.PENDING_FILE)
+        merker.setzen(merker.RUECKFALL, 0)
+        print("Alte Belegung zurueckgeholt")
+    except OSError as e:
+        print("Rueckfall noch nicht geschrieben:", e)
+
+
 def start():
     try:
+        rueckfall_anwenden()
         App().laufen()
     except Exception as e:
         import traceback
@@ -700,7 +722,10 @@ def start():
         print(text)
         # Neue Belegung, die nicht laeuft: neu starten, boot.py zaehlt mit und
         # holt nach zwei Fehlstarts die alte Belegung zurueck.
-        if existiert(cfg.PENDING_FILE):
+        # Im Rueckfall nicht mehr: laeuft auch die alte Belegung nicht, wuerde
+        # das Geraet sonst endlos neu starten.
+        if (existiert(cfg.PENDING_FILE)
+                and merker.lesen(merker.RUECKFALL) != merker.R_MAGIC):
             try:
                 with open("/fehler.txt", "w") as f:
                     f.write(text)
