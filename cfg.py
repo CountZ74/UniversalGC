@@ -1,0 +1,412 @@
+# cfg.py - Geraetekonfiguration der universellen SimRacing-Firmware
+#
+# Ein Geraet - Pedale, Buttonbox, Lenkrad - wird komplett durch device.json
+# beschrieben: welche Funktion an welchem Pin haengt, wie das Geraet am USB
+# heisst, welche Buttonnummern es belegt. Vorbild ist FreeJoy, nur dass der
+# Konfigurator hier die Weboberflaeche des Geraets selbst ist.
+#
+# Diese Datei importiert bewusst KEINE Hardware-Module (board, digitalio ...):
+# boot.py, code.py und die Tests auf dem PC benutzen sie gleichermassen.
+# Was die Hardware braucht - die Frage, ob ein Pin existiert und welche Pins
+# nur verschiedene Namen fuer denselben Anschluss sind - kommt als Funktion
+# von aussen herein.
+
+import json
+
+CONFIG_FILE  = "/device.json"
+BACKUP_FILE  = "/device.bak.json"
+PENDING_FILE = "/cfg_pending"       # neue Konfiguration noch nicht bestaetigt
+
+REPORT_ID  = 4
+AXIS_MAX   = 65535
+MAX_BUTTONS = 128
+MAX_AXES    = 8
+
+# HID-Usages der Achsen (Generic Desktop). "slider" darf zweimal vorkommen,
+# Windows zeigt dann zwei Schieberegler.
+AXIS_USAGES = {
+    "x": 0x30, "y": 0x31, "z": 0x32,
+    "rx": 0x33, "ry": 0x34, "rz": 0x35,
+    "slider": 0x36, "dial": 0x37, "wheel": 0x38,
+}
+
+# Joystick statt Gamepad ist der Normalfall: Automobilista 2 und Project CARS
+# steuern ihr Menue ueber die X/Y-Achsen von Gamepads (siehe Pedale v9.8).
+DEVICE_USAGES = {"joystick": 0x04, "gamepad": 0x05}
+
+AXIS_TYPES = ("pot", "as5600", "hx711", "encoder")
+BUTTON_MODES = ("normal", "pulse", "toggle")
+
+# Die Vorgaben fuer ein Geraet ohne device.json. Es meldet sich mit einem
+# einzigen Button und startet sofort den Access Point - so kommt man auch ohne
+# Konfigurationstaster an die Weboberflaeche (siehe code.py).
+def defaults():
+    return {
+        "name": "SimRacing Geraet",
+        "usb": {"manufacturer": "SimRacing", "product": "SimRacing Geraet",
+                "pid": -1, "usage": "joystick"},
+        "wifi": {"ssid": "SimRacing-Setup", "password": "simracing",
+                 "channel": 6, "port": 80},
+        "ble": {"enabled": False, "name": ""},
+        "config_pin": "",
+        "status_led": "",
+        "telemetry": {"enabled": True, "timeout": 2.0},
+        "options": {"debounce_ms": 20, "axis_threshold": 0,
+                    "hid_in_wifi": True, "axis_avg": 4, "blink_s": 0.5},
+        "buttons": [],
+        "matrix": None,
+        "shift": [],
+        "encoders": [],
+        "axes": [],
+        "logic": {"count": 0, "first": 0},
+        "leds": [],
+        "pixels": None,
+        "rumble": None,
+    }
+
+
+def _merge(vorgabe, daten):
+    """Fehlende Schluessel aus der Vorgabe ergaenzen, eine Ebene tief.
+
+    Eine aeltere device.json bleibt damit lauffaehig, wenn neue Optionen
+    dazukommen. Die Vorgabe wird dabei nicht veraendert (sie ist ohnehin
+    jedes Mal frisch gebaut - das war in der Buttonbox v1 ein echter Fehler).
+    """
+    out = {}
+    for k, v in vorgabe.items():
+        if k in daten:
+            w = daten[k]
+            if isinstance(v, dict) and isinstance(w, dict):
+                m = dict(v)
+                m.update(w)
+                out[k] = m
+            else:
+                out[k] = w
+        else:
+            out[k] = v
+    for k, v in daten.items():
+        if k not in out:
+            out[k] = v
+    return out
+
+
+def normalize(daten):
+    if not isinstance(daten, dict):
+        daten = {}
+    c = _merge(defaults(), daten)
+    for k in ("buttons", "shift", "encoders", "axes", "leds"):
+        if not isinstance(c.get(k), list):
+            c[k] = []
+    if not isinstance(c.get("logic"), dict):
+        c["logic"] = {"count": 0, "first": 0}
+    return c
+
+
+def _datei_lesen(pfad):
+    with open(pfad, "r") as f:
+        return json.load(f)
+
+
+def load():
+    """device.json laden, bei Fehlern die Sicherung, zuletzt die Vorgaben.
+
+    Rueckgabe: (konfiguration, quelle) mit quelle "device", "backup" oder
+    "default". Bei "default" startet code.py den Access Point von selbst.
+    """
+    for pfad, quelle in ((CONFIG_FILE, "device"), (BACKUP_FILE, "backup")):
+        try:
+            return normalize(_datei_lesen(pfad)), quelle
+        except (OSError, ValueError) as e:
+            print("Konfiguration", pfad, "nicht lesbar:", e)
+    return normalize({}), "default"
+
+
+# --- Buttonnummern -----------------------------------------------------------
+#
+# Jede Quelle von Buttons bekommt einen Block fester Nummern. Wer im Spiel
+# schon Tasten zugeordnet hat, will, dass die Nummern bei einer Umbaute
+# stehenbleiben - deshalb kann jede Quelle ihre erste Nummer mit "btn"
+# festlegen (1-basiert, wie Windows sie anzeigt). Ohne "btn" geht es mit der
+# naechsten freien Nummer weiter.
+
+def button_quellen(c):
+    """Liste (art, index, anzahl, gewuenschte_erste_nummer_oder_None)."""
+    q = []
+    for i, b in enumerate(c["buttons"]):
+        q.append(("button", i, 1, b.get("btn")))
+    m = c.get("matrix")
+    if m and m.get("rows") and m.get("cols"):
+        q.append(("matrix", 0, len(m["rows"]) * len(m["cols"]), m.get("btn")))
+    for i, s in enumerate(c["shift"]):
+        q.append(("shift", i, int(s.get("count", 8)), s.get("btn")))
+    for i, e in enumerate(c["encoders"]):
+        q.append(("encoder", i, 2, e.get("btn")))
+    lg = c.get("logic") or {}
+    n = int(lg.get("count", 0) or 0)
+    if n > 0:
+        q.append(("logic", 0, n, lg.get("first") or None))
+    return q
+
+
+def button_layout(c):
+    """Buttonbloecke zuweisen.
+
+    Rueckgabe: (bloecke, gesamt, fehler)
+      bloecke  dict (art, index) -> erstes Bit (0-basiert)
+      gesamt   Zahl der Buttons im Descriptor, auf ganze Bytes aufgerundet
+      fehler   Liste von Texten bei Ueberschneidungen
+    """
+    belegt = {}
+    bloecke = {}
+    fehler = []
+    quellen = button_quellen(c)
+
+    # Erst alle festen Nummern, damit automatische Bloecke ihnen ausweichen
+    for art, idx, n, wunsch in quellen:
+        if not wunsch:
+            continue
+        try:
+            erstes = int(wunsch) - 1
+        except (TypeError, ValueError):
+            fehler.append("%s %d: Buttonnummer '%s' ungueltig" % (art, idx + 1, wunsch))
+            continue
+        if erstes < 0:
+            fehler.append("%s %d: Buttonnummer muss ab 1 zaehlen" % (art, idx + 1))
+            continue
+        for b in range(erstes, erstes + n):
+            if b in belegt:
+                fehler.append("Button %d doppelt: %s %d und %s" %
+                              (b + 1, art, idx + 1, belegt[b]))
+            belegt[b] = "%s %d" % (art, idx + 1)
+        bloecke[(art, idx)] = erstes
+
+    naechstes = 0
+    for art, idx, n, wunsch in quellen:
+        if wunsch:
+            continue
+        # Den ersten Platz suchen, an dem der ganze Block frei ist
+        while any((b in belegt) for b in range(naechstes, naechstes + n)):
+            naechstes += 1
+        for b in range(naechstes, naechstes + n):
+            belegt[b] = "%s %d" % (art, idx + 1)
+        bloecke[(art, idx)] = naechstes
+        naechstes += n
+
+    hoechstes = max(belegt) + 1 if belegt else 0
+    gesamt = (hoechstes + 7) // 8 * 8
+    if gesamt > MAX_BUTTONS:
+        fehler.append("%d Buttons - hoechstens %d moeglich" % (hoechstes, MAX_BUTTONS))
+    return bloecke, gesamt, fehler
+
+
+# --- HID-Descriptor ----------------------------------------------------------
+
+def buttons_im_report(c):
+    """Buttonzahl im Descriptor. Ein Geraet ganz ohne Eingaenge (frisch, noch
+    unkonfiguriert) meldet 8 Buttons - ein leerer Report wird von Windows
+    nicht als Spielecontroller angenommen."""
+    _, n_btn, _ = button_layout(c)
+    if n_btn == 0 and not c["axes"]:
+        return 8
+    return n_btn
+
+
+def axis_usages(c):
+    return [AXIS_USAGES.get(str(a.get("usage", "")).lower(), 0x30) for a in c["axes"]]
+
+
+def descriptor(c):
+    """HID-Report-Descriptor aus der Konfiguration bauen.
+
+    Aufbau des Reports (ohne Report-ID, die setzt der Stack davor):
+      Buttons, 1 bit je Button, auf ganze Bytes aufgerundet
+      Achsen,  je 16 bit unsigned 0..65535, little endian
+    """
+    n_btn = buttons_im_report(c)
+    usages = axis_usages(c)
+    geraet = DEVICE_USAGES.get(str(c["usb"].get("usage", "joystick")).lower(), 0x04)
+
+    d = bytearray((
+        0x05, 0x01,              # Usage Page (Generic Desktop)
+        0x09, geraet,            # Usage (Joystick / Gamepad)
+        0xA1, 0x01,              # Collection (Application)
+        0x85, REPORT_ID,         #   Report ID
+    ))
+    if n_btn:
+        d.extend(bytes((
+            0x05, 0x09,          #   Usage Page (Button)
+            0x19, 0x01,          #   Usage Minimum (1)
+            0x29, n_btn,         #   Usage Maximum (n)
+            0x15, 0x00,          #   Logical Minimum (0)
+            0x25, 0x01,          #   Logical Maximum (1)
+            0x75, 0x01,          #   Report Size (1)
+            0x95, n_btn,         #   Report Count (n)
+            0x81, 0x02,          #   Input (Data, Variable, Absolute)
+        )))
+    if usages:
+        d.extend(bytes((0x05, 0x01)))    # Usage Page (Generic Desktop)
+        for u in usages:
+            d.extend(bytes((0x09, u)))   # Usage (X, Rx, Slider ...)
+        d.extend(bytes((
+            0x15, 0x00,                    #   Logical Minimum (0)
+            0x27, 0xFF, 0xFF, 0x00, 0x00,  #   Logical Maximum (65535)
+            0x75, 0x10,                    #   Report Size (16)
+            0x95, len(usages),             #   Report Count
+            0x81, 0x02,                    #   Input (Data, Variable, Absolute)
+        )))
+    d.append(0xC0)               # End Collection
+    return bytes(d)
+
+
+def report_laenge(c):
+    return buttons_im_report(c) // 8 + 2 * len(c["axes"])
+
+
+def device_usage(c):
+    return DEVICE_USAGES.get(str(c["usb"].get("usage", "joystick")).lower(), 0x04)
+
+
+# --- Pins --------------------------------------------------------------------
+
+def pins_belegt(c):
+    """Alle Pins mit ihrer Rolle: Liste (pinname, rolle)."""
+    p = []
+
+    def dazu(name, rolle):
+        if name:
+            p.append((str(name), rolle))
+
+    dazu(c.get("config_pin"), "Konfigurationstaster")
+    dazu(c.get("status_led"), "Status-LED")
+    for i, b in enumerate(c["buttons"]):
+        dazu(b.get("pin"), "Taster %d" % (i + 1))
+    m = c.get("matrix")
+    if m:
+        for i, r in enumerate(m.get("rows", [])):
+            dazu(r, "Matrix Zeile %d" % (i + 1))
+        for i, s in enumerate(m.get("cols", [])):
+            dazu(s, "Matrix Spalte %d" % (i + 1))
+    for i, s in enumerate(c["shift"]):
+        for k in ("data", "clock", "latch"):
+            dazu(s.get(k), "Schieberegister %d %s" % (i + 1, k))
+    for i, e in enumerate(c["encoders"]):
+        dazu(e.get("a"), "Encoder %d A" % (i + 1))
+        dazu(e.get("b"), "Encoder %d B" % (i + 1))
+    for i, a in enumerate(c["axes"]):
+        t = a.get("type")
+        if t == "hx711":
+            dazu(a.get("dt"), "Achse %d HX711 DT" % (i + 1))
+            dazu(a.get("sck"), "Achse %d HX711 SCK" % (i + 1))
+        elif t == "encoder":
+            dazu(a.get("a"), "Achse %d Encoder A" % (i + 1))
+            dazu(a.get("b"), "Achse %d Encoder B" % (i + 1))
+        else:
+            dazu(a.get("pin"), "Achse %d" % (i + 1))
+    for i, l in enumerate(c["leds"]):
+        dazu(l.get("pin"), "LED %d" % (i + 1))
+    px = c.get("pixels")
+    if px:
+        dazu(px.get("pin"), "WS2812")
+    rb = c.get("rumble")
+    if rb:
+        for i, k in enumerate(rb.get("channels", [])):
+            dazu(k.get("in1"), "Rumble %d IN1" % (i + 1))
+            dazu(k.get("in2"), "Rumble %d IN2" % (i + 1))
+    return p
+
+
+def validate(c, pin_id=None, analog_ok=None):
+    """Konfiguration pruefen. Rueckgabe: Liste von Fehlertexten (leer = gut).
+
+    pin_id(name)    -> eindeutige Kennung des Anschlusses oder None, wenn das
+                       Board den Pin nicht kennt. Zwei Namen fuer denselben
+                       Anschluss (GP25 und LED) ergeben dieselbe Kennung.
+    analog_ok(name) -> False, wenn der Pin kein Analogeingang ist.
+    Ohne diese Funktionen werden nur die Namen verglichen.
+    """
+    f = []
+    if pin_id is None:
+        def pin_id(n):
+            return n
+
+    gesehen = {}
+    for name, rolle in pins_belegt(c):
+        k = pin_id(name)
+        if k is None:
+            f.append("%s: Pin %s gibt es auf diesem Board nicht" % (rolle, name))
+            continue
+        if k in gesehen:
+            f.append("Pin %s doppelt belegt: %s und %s" % (name, gesehen[k], rolle))
+        else:
+            gesehen[k] = rolle
+
+    _, n_btn, bf = button_layout(c)
+    f.extend(bf)
+
+    if len(c["axes"]) > MAX_AXES:
+        f.append("%d Achsen - hoechstens %d moeglich" % (len(c["axes"]), MAX_AXES))
+    zaehl = {}
+    for i, a in enumerate(c["axes"]):
+        t = a.get("type")
+        if t not in AXIS_TYPES:
+            f.append("Achse %d: unbekannter Typ '%s'" % (i + 1, t))
+            continue
+        u = str(a.get("usage", "")).lower()
+        if u not in AXIS_USAGES:
+            f.append("Achse %d: unbekannte HID-Achse '%s'" % (i + 1, u))
+        else:
+            zaehl[u] = zaehl.get(u, 0) + 1
+        if t in ("pot", "as5600"):
+            if not a.get("pin"):
+                f.append("Achse %d: kein Pin" % (i + 1))
+            elif analog_ok is not None and not analog_ok(a["pin"]):
+                f.append("Achse %d: %s ist kein Analogeingang" % (i + 1, a["pin"]))
+        elif t == "hx711" and not (a.get("dt") and a.get("sck")):
+            f.append("Achse %d: Waegezelle braucht DT und SCK" % (i + 1))
+        elif t == "encoder" and not (a.get("a") and a.get("b")):
+            f.append("Achse %d: Encoder braucht A und B" % (i + 1))
+    for u, n in zaehl.items():
+        if n > (2 if u == "slider" else 1):
+            f.append("HID-Achse %s %dx vergeben" % (u, n))
+
+    for i, e in enumerate(c["encoders"]):
+        if not (e.get("a") and e.get("b")):
+            f.append("Encoder %d braucht A und B" % (i + 1))
+    for i, b in enumerate(c["buttons"]):
+        if not b.get("pin"):
+            f.append("Taster %d: kein Pin" % (i + 1))
+        if b.get("mode", "normal") not in BUTTON_MODES:
+            f.append("Taster %d: unbekannte Betriebsart '%s'" % (i + 1, b.get("mode")))
+    m = c.get("matrix")
+    if m and (bool(m.get("rows")) != bool(m.get("cols"))):
+        f.append("Matrix braucht Zeilen UND Spalten")
+    for i, s in enumerate(c["shift"]):
+        if not (s.get("data") and s.get("clock") and s.get("latch")):
+            f.append("Schieberegister %d braucht data, clock und latch" % (i + 1))
+    rb = c.get("rumble")
+    if rb:
+        for i, k in enumerate(rb.get("channels", [])):
+            if not (k.get("in1") and k.get("in2")):
+                f.append("Rumble %d braucht IN1 und IN2" % (i + 1))
+    px = c.get("pixels")
+    if px and px.get("pin"):
+        n = int(px.get("count", 0) or 0)
+        if n < 1 or n > 256:
+            f.append("WS2812: Anzahl %d ungueltig (1 bis 256)" % n)
+
+    u = c["usb"]
+    try:
+        pid = int(u.get("pid", -1))
+        if pid > 0xFFFF:
+            f.append("USB-PID zu gross")
+    except (TypeError, ValueError):
+        f.append("USB-PID ist keine Zahl")
+    if str(u.get("usage", "joystick")).lower() not in DEVICE_USAGES:
+        f.append("Geraetetyp '%s' unbekannt (joystick oder gamepad)" % u.get("usage"))
+    w = c["wifi"]
+    pw = w.get("password") or ""
+    if pw and len(pw) < 8:
+        f.append("WLAN-Passwort braucht mindestens 8 Zeichen (oder leer)")
+    if n_btn == 0 and not c["axes"]:
+        f.append("Weder Buttons noch Achsen - das Geraet haette nichts zu melden")
+    return f

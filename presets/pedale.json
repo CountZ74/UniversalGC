@@ -1,0 +1,24 @@
+{
+  "name": "Pedale",
+  "usb": {"manufacturer": "SimRacing", "product": "Pedale", "pid": 18194, "usage": "joystick"},
+  "wifi": {"ssid": "Pico-Pedale", "password": "pedale123", "channel": 6, "port": 80},
+  "ble": {"enabled": false},
+  "config_pin": "GP3",
+  "status_led": "GP16",
+  "telemetry": {"enabled": true, "timeout": 2.0},
+  "options": {"hid_in_wifi": true, "axis_avg": 4},
+  "axes": [
+    {"type": "as5600", "pin": "GP26", "usage": "rx", "name": "Gas", "deadzone": 1.5, "margin": 2.0},
+    {"type": "hx711", "dt": "GP1", "sck": "GP0", "usage": "ry", "name": "Bremse",
+     "mode": "pio", "filter": 8, "hx_max": 50000, "deadzone": 1.5, "margin": 2.0},
+    {"type": "as5600", "pin": "GP28", "usage": "rz", "name": "Kupplung", "deadzone": 1.5, "margin": 2.0}
+  ],
+  "rumble": {
+    "channels": [
+      {"in1": "GP4", "in2": "GP5", "name": "Bremse", "tele": "bremse"},
+      {"in1": "GP6", "in2": "GP7", "name": "Gas", "tele": "gas"}
+    ],
+    "supply": 15.0, "motor": 12.0, "pwm_hz": 20000,
+    "kick_ms": 50, "brake_ms": 80, "brake_delay_ms": 0, "tele_max": 100
+  }
+}

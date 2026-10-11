@@ -1,0 +1,644 @@
+<!DOCTYPE html><html lang="de"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SimRacing Konfigurator</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#eee;padding:14px;max-width:560px;margin:0 auto}
+h1{color:#e94560;font-size:1.2rem}
+h2{color:#e94560;font-size:.95rem;margin:14px 0 8px}
+.sub{font-size:.72rem;color:#667}
+.tabs{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0}
+.tab{flex:1 0 auto;padding:7px 8px;text-align:center;border-radius:7px;cursor:pointer;background:#16213e;border:1px solid #0f3460;color:#aaa;font-size:.8rem}
+.tab.on{background:#e94560;border-color:#e94560;color:#fff}
+.tab.aus{display:none}
+.panel{display:none}.panel.on{display:block}
+.a{background:#16213e;border:1px solid #0f3460;border-radius:9px;padding:12px;margin-bottom:10px}
+.a.dim{opacity:.35;pointer-events:none}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hd b{font-size:.95rem}.hd span{font-size:.78rem;color:#8ab}
+.bb{background:#0f3460;border-radius:5px;height:18px;overflow:hidden;margin:6px 0}
+.b{background:linear-gradient(90deg,#e94560,#f5a623);height:100%;border-radius:5px;transition:width .12s}
+.meta{font-size:.72rem;color:#889;font-variant-numeric:tabular-nums}
+.br{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.btn{flex:1;background:#e94560;color:#fff;border:none;border-radius:6px;padding:7px 6px;text-align:center;font-size:.76rem;cursor:pointer;font-family:inherit}
+.btn.s{background:#0f3460}.btn.r{background:#5a2020}.btn.g{background:#1f6b2a}
+.btn.k{flex:0 0 auto;padding:5px 9px}
+.btn:disabled{opacity:.4;cursor:default}
+.sw{background:#2a1f00;border:1px solid #f5a623;color:#f5a623;border-radius:7px;padding:12px;margin-bottom:10px;font-size:.86rem;line-height:1.55}
+.so{background:#002a0f;border:1px solid #4caf50;color:#4caf50;border-radius:7px;padding:10px;margin-bottom:10px;font-size:.86rem}
+.se{background:#2a0f0f;border:1px solid #e94560;color:#ff8a9c;border-radius:7px;padding:10px;margin-bottom:10px;font-size:.8rem;line-height:1.5}
+.sv{font-size:1.4rem;font-weight:600;font-variant-numeric:tabular-nums;display:block;margin:6px 0 2px}
+.wlan{background:#0f3460;display:block;width:100%;text-align:center;color:#fff;border:none;border-radius:6px;padding:9px;margin-top:12px;font-size:.86rem;cursor:pointer;font-family:inherit}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:5px}
+.lp{display:flex;gap:6px;align-items:center;font-size:.74rem;color:#ccd;background:#0d1b2e;border-radius:5px;padding:4px 6px;overflow:hidden;white-space:nowrap}
+.lamp{width:11px;height:11px;border-radius:50%;background:#0f3460;border:1px solid #24406b;flex:0 0 11px}
+.lamp.on{background:#4caf50;border-color:#4caf50;box-shadow:0 0 6px #4caf5088}
+.lamp.p{background:#f5a623;border-color:#f5a623}
+.nr{color:#667;font-variant-numeric:tabular-nums}
+label.f{display:block;font-size:.7rem;color:#8ab;margin:6px 0 2px}
+input,select,textarea{width:100%;background:#0d1b2e;border:1px solid #0f3460;border-radius:5px;padding:6px;color:#eee;font-size:.82rem;font-family:inherit}
+input[type=checkbox]{width:17px;height:17px;accent-color:#e94560;vertical-align:middle}
+input[type=color]{padding:0;height:30px}
+textarea{font-family:ui-monospace,monospace;font-size:.72rem}
+.mono{font-family:ui-monospace,monospace}
+select.dup,input.dup{border-color:#e94560;background:#2a0f0f}
+.row{display:grid;gap:6px;align-items:end;margin-bottom:6px}
+.c2{grid-template-columns:1fr 1fr}.c3{grid-template-columns:1fr 1fr 1fr}.c4{grid-template-columns:repeat(4,1fr)}
+.item{border:1px solid #0f3460;border-radius:7px;padding:8px;margin-bottom:8px;background:#121a33}
+.item .hd{margin-bottom:4px}
+.x{background:none;border:none;color:#e94560;font-size:1rem;cursor:pointer}
+.hint{background:#16213e;border:1px solid #0f3460;border-radius:7px;padding:10px;margin-bottom:10px;font-size:.74rem;line-height:1.65;color:#9ab}
+.hint b{color:#f5a623}.hint code{color:#7eb8f7;font-family:ui-monospace,monospace}
+.dg{background:#0d1b2e;border:1px solid #0f3460;border-radius:7px;padding:10px;font-size:.74rem;color:#8ab;margin-bottom:10px;line-height:1.6}
+.dg code{color:#7eb8f7;word-break:break-all}.dg .nl{color:#4caf50;font-weight:700}
+.kt{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.ktab{flex:1;padding:6px;text-align:center;border-radius:6px;cursor:pointer;background:#16213e;border:1px solid #0f3460;color:#aaa;font-size:.8rem}
+.ktab.on{background:#e94560;border-color:#e94560;color:#fff}
+canvas{display:block;width:100%;touch-action:none;cursor:crosshair;border-radius:5px;background:#0d1b2e}
+.cbb{background:#0f3460;border-radius:4px;height:14px;overflow:hidden;margin-bottom:5px;position:relative}
+.cbi{background:#7eb8f7;height:100%;border-radius:4px;position:absolute;top:0;left:0;opacity:.55}
+.cbo{background:linear-gradient(90deg,#e94560,#f5a623);height:100%;border-radius:4px}
+.cl{font-size:.74rem;color:#aaa;margin:6px 0 3px}
+.rg{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:6px;margin-top:8px}
+.rg label{font-size:.68rem;color:#8ab;display:block}
+.rg input{text-align:center}
+.stop{width:100%;background:#8b1a1a;color:#fff;border:1px solid #e94560;border-radius:7px;padding:11px;margin-bottom:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit}
+.msg{font-size:.78rem;min-height:16px;margin-top:6px;line-height:1.5}
+.msg.ok{color:#4caf50}.msg.err{color:#ff8a9c}
+.pxv{display:flex;gap:3px;flex-wrap:wrap;margin:6px 0}
+.pxv span{width:16px;height:16px;border-radius:50%;background:#0f3460;border:1px solid #24406b}
+</style></head><body>
+
+<h1 id="titel">SimRacing <span class="sub" id="ver"></span></h1>
+<div class="sub" id="geraet"></div>
+<div class="tabs" id="tabs">
+  <div class="tab on" data-t="s">Status</div>
+  <div class="tab" data-t="a">Achsen</div>
+  <div class="tab" data-t="k">Kurven</div>
+  <div class="tab" data-t="l">Logik</div>
+  <div class="tab" data-t="d">LEDs</div>
+  <div class="tab" data-t="r">Rumble</div>
+  <div class="tab" data-t="b">Belegung</div>
+</div>
+
+<!-- Status -->
+<div id="ps" class="panel on">
+  <div id="hinw"></div>
+  <div class="a"><div class="hd"><b>Buttons</b><span id="bcount"></span></div>
+    <div class="grid" id="btns" style="margin-top:8px"></div></div>
+  <div class="a" id="saxw"><div class="hd"><b>Achsen</b></div><div id="sax"></div></div>
+  <div class="a" id="sencw"><div class="hd"><b>Encoder</b></div><div class="meta" id="senc"></div></div>
+  <div class="a"><div class="hd"><b>Verbindung</b></div>
+    <div class="meta" id="sver" style="line-height:1.7"></div></div>
+  <div class="dg" id="sdg">Telemetrie: &hellip;</div>
+  <button class="wlan" onclick="wlanAus()">WLAN aus &ndash; zur&uuml;ck in den Normalbetrieb</button>
+</div>
+
+<!-- Achsen -->
+<div id="pa" class="panel">
+  <div id="fsw"></div>
+  <div id="cstat"></div>
+  <div id="axes"></div>
+</div>
+
+<!-- Kurven -->
+<div id="pk" class="panel">
+  <div class="kt" id="kt"></div>
+  <div class="a">
+    <canvas id="cv" width="420" height="280"></canvas>
+    <div class="cl">Eingang (nach Kalibrierung): <span id="ci">0</span>%</div>
+    <div class="cbb"><div class="cbi" id="bi"></div><div class="cbo" id="bo"></div></div>
+    <div class="cl">Ausgang (nach Kennlinie): <span id="co">0</span>%</div>
+    <div class="br">
+      <button class="btn s" onclick="pre('lin')">Linear</button>
+      <button class="btn s" onclick="pre('prog')">Progressiv</button>
+      <button class="btn s" onclick="pre('deg')">Degressiv</button>
+      <button class="btn s" onclick="pre('s')">S-Kurve</button>
+    </div>
+    <button class="btn g" style="width:100%;margin-top:8px;padding:9px" id="sbtn" onclick="kSave()">Speichern</button>
+    <div class="hint" style="margin-top:8px">Punkt ziehen zum Verschieben, in die Fläche klicken für einen neuen Punkt, Doppelklick löscht ihn.</div>
+  </div>
+</div>
+
+<!-- Logik -->
+<div id="pl" class="panel">
+  <div class="hint">
+    <b>Funktionen</b> <code>AND(x,y,…)</code> <code>OR(…)</code> <code>NOT(x)</code>
+    <code>GT(a,b)</code> <code>LT</code> <code>GE</code> <code>LE</code> <code>EQ</code><br>
+    <b>Buttons</b> <code>b0</code>, <code>b1</code> … = Button 1, 2 … (physischer Zustand)<br>
+    <b>Achsen</b> <code>a0</code>, <code>a1</code> … in Prozent<br>
+    <b>Telemetrie</b> jeder Name, den SimHub schickt, z.&nbsp;B. <code>motor</code>, <code>rpm</code><br>
+    Beispiel: <code>AND(b9,b10,NOT(motor))</code> – Zündung an, Motor aus.
+  </div>
+  <div id="lbw"><h2>Logik-Buttons</h2><div id="lbl"></div></div>
+  <h2>Buttons nicht an den PC senden</h2>
+  <div class="hint" style="margin-bottom:6px">Für Schalter, die nur in der Logik gebraucht werden (z.&nbsp;B. Zündung).</div>
+  <div class="grid" id="sup"></div>
+  <button class="btn g" style="width:100%;margin-top:10px;padding:9px" onclick="lSave(this)">Speichern</button>
+  <div class="msg" id="lmsg"></div>
+</div>
+
+<!-- LEDs -->
+<div id="pd" class="panel">
+  <div id="ledw"><h2>LEDs</h2><div id="ledl"></div></div>
+  <div id="pxw"><h2>WS2812-Streifen</h2>
+    <div class="a">
+      <div class="pxv" id="pxv"></div>
+      <div class="row c2">
+        <div><label class="f">Drehzahl (Telemetriename)</label><input id="px_rpm"></div>
+        <div><label class="f">Maximum (Zahl oder Name)</label><input id="px_max"></div>
+      </div>
+      <div class="row c2">
+        <div><label class="f">erste LED ab %</label><input type="number" id="px_start"></div>
+        <div><label class="f">Schaltblitz ab % (0 = aus)</label><input type="number" id="px_flash"></div>
+      </div>
+      <label class="f">Farbverlauf (von unten nach oben) und Blitzfarbe</label>
+      <div class="row c4" id="px_cols"></div>
+      <h2>Regeln</h2>
+      <div class="hint" style="margin-bottom:6px">Färben LEDs ein, solange der Ausdruck wahr ist – Vorrang vor dem Drehzahlband. LEDs als <code>0-3,7</code>.</div>
+      <div id="px_rules"></div>
+      <button class="btn s" style="width:100%" onclick="pxRegel()">+ Regel</button>
+    </div>
+  </div>
+  <div id="noled" class="hint">Keine LEDs konfiguriert – unter <b>Belegung</b> anlegen.</div>
+  <button class="btn g" style="width:100%;margin-top:10px;padding:9px" onclick="dSave(this)">Speichern</button>
+  <div class="msg" id="dmsg"></div>
+</div>
+
+<!-- Rumble -->
+<div id="pr" class="panel">
+  <button class="stop" onclick="rAllesAus()">■ Alle Motoren sofort aus</button>
+  <div class="dg" id="tdg">Telemetrie: &hellip;</div>
+  <div id="rax"></div>
+  <button class="btn g" style="width:100%;padding:9px" onclick="rSave(this)">Einstellungen speichern</button>
+  <div class="hint" style="margin-top:10px">
+    <b>Schwelle</b>: darunter wird nichts ausgegeben. <b>min</b>: Duty, ab dem der Motor nicht stehenbleibt.
+    <b>max</b>: volle Stärke. <b>Kick</b>: Anlaufimpuls, wenn der Sollwert darunter liegt.
+    <b>Gain</b> skaliert SimHub. <b>Brems ms</b>: 0 trennt die Schläge (ABS, Randstein), höher lässt sie verschmelzen (Fahrbahn).
+    Der Testschieber hält den Motor nur, solange die Seite sendet; der Konfigurationstaster ist immer Not-Aus.
+  </div>
+</div>
+
+<!-- Belegung -->
+<div id="pb" class="panel">
+  <div class="hint">Hier wird festgelegt, was an welchem Pin hängt. <b>Speichern startet das Gerät neu</b> – der PC liest den Aufbau nur beim Einstecken.
+    Startet die neue Belegung zweimal nicht, holt das Gerät die alte zurück.
+    <br>Neue Buttonnummer oder Achse: im Spiel einmal neu zuordnen.</div>
+  <div class="a">
+    <div class="row c2">
+      <div><label class="f">Vorlage laden</label><select id="presel"></select></div>
+      <div><button class="btn s" style="width:100%" onclick="presetLaden()">Laden</button></div>
+    </div>
+  </div>
+  <div id="cfgform"></div>
+  <div class="a">
+    <div class="br">
+      <button class="btn s" onclick="pruefen()">Prüfen</button>
+      <button class="btn g" onclick="speichern()">Speichern &amp; Neustart</button>
+    </div>
+    <div class="msg" id="cmsg"></div>
+    <div class="br"><button class="btn s" onclick="jsonUmschalten()">JSON direkt bearbeiten</button></div>
+    <div id="jsonw" style="display:none;margin-top:8px">
+      <textarea id="json" rows="18"></textarea>
+      <div class="br"><button class="btn s" onclick="jsonUebernehmen()">In das Formular übernehmen</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=i=>document.getElementById(i);
+const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const ADC=65536;
+let I=null,S=null,K=null,tabAkt='s',pending=false,ai=0,di=-1;
+
+async function api(u,o){try{const r=await fetch(u,o);return await r.json();}catch(e){return null;}}
+function post(u,obj){return api(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});}
+function melde(id,ok,txt){const e=$(id);e.className='msg '+(ok?'ok':'err');e.innerHTML=txt;}
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>tab(t.dataset.t));
+function tab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.t===id));
+  for(const p of ['s','a','k','l','d','r','b'])$('p'+p).classList.toggle('on',p===id);
+  if(tabAkt==='r'&&id!=='r')rAllesAus();
+  tabAkt=id;
+  if(id==='k')draw();
+}
+
+async function init(){
+  const d=await api('/init');
+  if(!d){setTimeout(init,800);return;}
+  I=d;K=JSON.parse(JSON.stringify(d.c));
+  $('titel').firstChild.textContent=(d.name||'SimRacing')+' ';
+  $('ver').textContent='v'+d.v;
+  $('geraet').textContent=d.board+' · '+d.chip+(d.q!=='device'?' · Konfiguration: '+d.q:'');
+  document.querySelector('[data-t=a]').classList.toggle('aus',!d.an.length);
+  document.querySelector('[data-t=k]').classList.toggle('aus',!d.an.length);
+  document.querySelector('[data-t=r]').classList.toggle('aus',!d.rn.length);
+  document.querySelector('[data-t=l]').classList.toggle('aus',!d.nb);
+  bauStatus();bauAchsen();bauKTabs();bauLogik();bauLeds();bauRumble();bauForm();bauPresets();
+  if(d.q==='default')tab('b');
+  poll();
+}
+
+/* ---------- Status ---------- */
+function bauStatus(){
+  const f=I.f.slice();
+  if(I.q==='default')f.unshift('Noch keine device.json – unter <b>Belegung</b> eine Vorlage laden oder selbst einrichten.');
+  if(I.q==='backup')f.unshift('device.json war nicht lesbar – es läuft die Sicherung.');
+  if(!I.fs)f.unshift('Dateisystem schreibgeschützt (Wartungsmodus) – nichts wird gespeichert.');
+  $('hinw').innerHTML=f.length?'<div class="se">'+f.join('<br>')+'</div>':'';
+  $('btns').innerHTML=I.bn.map((n,i)=>n?'<div class="lp"><span class="lamp" id="bl'+i+'"></span><span class="nr">'+(i+1)+'</span> '+esc(n)+'</div>':'').join('');
+  $('bcount').textContent=I.nb+' Buttons im Report';
+  $('sax').innerHTML=I.an.map((n,i)=>'<div class="meta" style="margin-top:6px">'+esc(n)+' <span id="sx'+i+'"></span></div><div class="bb"><div class="b" id="sb'+i+'"></div></div>').join('');
+  $('saxw').style.display=I.an.length?'':'none';
+  $('sencw').style.display=(I.c.encoders||[]).length?'':'none';
+}
+function renderStatus(){
+  for(let i=0;i<I.bn.length;i++){const e=$('bl'+i);if(!e)continue;
+    const p=S.p[i]==='1',o=S.o[i]==='1';
+    e.className='lamp'+(o?' on':(p?' p':''));}
+  for(let i=0;i<I.an.length;i++){$('sb'+i).style.width=S.o2[i]+'%';$('sx'+i).textContent=S.o2[i]+'%  ·  roh '+S.r[i];}
+  $('senc').textContent=S.enc.map((p,i)=>'Encoder '+(i+1)+': '+p).join('  ·  ');
+  $('sver').innerHTML='Bluetooth: '+esc(S.ble)+'<br>Freier Speicher: '+Math.round(S.mem/1024)+' kB';
+  $('sdg').innerHTML=teleText();
+}
+function sicht(t){return esc(t).replace(/\r/g,'<span class="nl">\\r</span>').replace(/\n/g,'<span class="nl">\\n</span>');}
+function teleText(){
+  let t;
+  if(S.tz===0)t='<b>Nichts empfangen.</b> SimHub sendet nicht – falscher COM-Port oder Gerät in SimHub nicht verbunden.';
+  else if(S.tz===1)t='<b>'+S.tb+' Zeichen, aber keine vollständige Zeile.</b> Meist fehlt das <code>\\n</code> am Ende der Formel.';
+  else t='<b>Verbunden</b> · '+S.tl+' Zeilen · '+S.tb+' Zeichen';
+  const w=S.tv&&Object.keys(S.tv).length?'<br>Werte: '+Object.keys(S.tv).map(k=>esc(k)+'='+esc(S.tv[k])).join(' · '):'';
+  return 'Telemetrie: '+t+w+(S.tr?'<br>Zuletzt: <code>'+sicht(S.tr)+'</code>':'');
+}
+
+/* ---------- Achsen ---------- */
+function bauAchsen(){
+  $('axes').innerHTML=I.an.map((n,i)=>{
+    const t=I.at[i];
+    let knoepfe='';
+    if(t!=='encoder'){
+      knoepfe='<button class="btn" onclick="go(\'/cal_start?a='+i+'\')">Kalibrieren</button>'+
+        (t==='hx711'?'<button class="btn s" onclick="go(\'/tare?a='+i+'\')">Tarieren</button>'
+                    :'<button class="btn s" onclick="go(\'/cal_flip?a='+i+'\')">Umkehren</button>')+
+        '<button class="btn r" onclick="go(\'/cal_reset?a='+i+'\')">Reset</button>';
+    }
+    return '<div class="a" id="a'+i+'"><div class="hd"><b>'+esc(n)+'</b><span id="pc'+i+'">0%</span></div>'+
+      '<div class="bb"><div class="b" id="b'+i+'"></div></div><div class="meta" id="m'+i+'"></div>'+
+      '<div class="br">'+knoepfe+'</div></div>';
+  }).join('');
+}
+const grad=v=>(v/ADC*360).toFixed(1)+'°';
+function renderAchsen(){
+  for(let i=0;i<I.an.length;i++){
+    $('b'+i).style.width=S.o2[i]+'%';$('pc'+i).textContent=S.o2[i]+'%';
+    const st=S.c[i][0],sp=S.c[i][1],t=I.at[i];
+    let m;
+    if(t==='hx711')m='Roh '+S.r[i]+' · Maximalkraft '+sp+' · '+(S.hz[i]||0)+' Hz';
+    else if(t==='as5600')m='Roh '+S.r[i]+' ('+grad(S.r[i])+') · Null '+st+' · Weg '+(sp>0?'+':'')+sp+' ('+grad(Math.abs(sp))+')';
+    else if(t==='encoder')m='Schritte '+S.r[i];
+    else m='Roh '+S.r[i]+' · Start '+st+' · Weg '+(sp>0?'+':'')+sp;
+    $('m'+i).textContent=m;
+    $('a'+i).classList.toggle('dim',S.ax!==null&&S.ax!==i);
+  }
+  $('fsw').innerHTML=S.fs?'':'<div class="se">Dateisystem schreibgeschützt – Kalibrierung gilt nur bis zum Neustart.</div>';
+  const el=$('cstat');
+  if(S.ax===null){el.innerHTML=(S.st==='done'&&S.m)?'<div class="so">'+esc(S.m)+'</div>':(S.m?'<div class="so">'+esc(S.m)+'</div>':'');return;}
+  const n=esc(I.an[S.ax]),t=I.at[S.ax];
+  if(S.st==='zero'){
+    el.innerHTML='<div class="sw"><b>Schritt 1/2 – '+n+'</b><br>'+
+      (t==='pot'?'In die Ruhestellung bringen (das Ende, das 0 % sein soll).':'Vollständig loslassen und ruhig halten.')+
+      '<div class="br"><button class="btn" onclick="go(\'/cal_zero\')">Ruhestellung setzen</button>'+
+      '<button class="btn s" onclick="go(\'/cal_abort\')">Abbrechen</button></div></div>';
+  }else if(S.st==='sweep'){
+    const f=S.sw[0],r=S.sw[1],max=t==='pot'?f+r:Math.max(f,r),min=t==='hx711'?1000:(t==='pot'?500:300);
+    const txt=t==='hx711'?max+' Zähler':(t==='as5600'?max+' Schritte ('+grad(max)+')':max+' Schritte');
+    el.innerHTML='<div class="sw"><b>Schritt 2/2 – '+n+'</b><br>Jetzt zwei-, dreimal <b>ganz durchbewegen</b>. Der Wert muss dabei wachsen.'+
+      '<span class="sv">'+txt+'</span>'+
+      '<div class="br"><button class="btn" onclick="go(\'/cal_finish\')"'+(max<min?' disabled':'')+'>Fertig</button>'+
+      '<button class="btn s" onclick="go(\'/cal_abort\')">Abbrechen</button></div></div>';
+  }
+}
+async function go(u){if(pending)return;pending=true;const d=await api(u);pending=false;if(d){S=d;render();}}
+
+/* ---------- Poll ---------- */
+function render(){
+  if(!S)return;
+  if(tabAkt==='s')renderStatus();
+  if(tabAkt==='a')renderAchsen();
+  if(tabAkt==='l')renderLogik();
+  if(tabAkt==='d')renderLeds();
+  if(tabAkt==='r')renderRumble();
+  if(tabAkt==='k'&&I.an.length){
+    const inp=S.i[ai],out=S.o2[ai];
+    $('bi').style.width=inp+'%';$('bo').style.width=out+'%';
+    $('ci').textContent=inp;$('co').textContent=out;draw();
+  }
+}
+async function poll(){
+  if(!pending&&tabAkt!=='b'){const d=await api('/data');if(d){S=d;render();}}
+  setTimeout(poll,(S&&S.st==='sweep')?200:400);
+}
+async function wlanAus(){
+  await api('/wlan_aus');
+  document.body.innerHTML='<h1>Normalbetrieb</h1><p style="color:#8ab;margin-top:10px">Der Access Point ist aus. Zum Wiedereinschalten den Konfigurationstaster drücken.</p>';
+}
+
+/* ---------- Logik ---------- */
+function bauLogik(){
+  const lb=I.lg.buttons||[];
+  $('lbw').style.display=lb.length?'':'none';
+  $('lbl').innerHTML=lb.map((b,i)=>'<div class="item"><div class="hd"><b><span class="lamp" id="ll'+i+'" style="display:inline-block"></span> Button '+(I.lb0+i+1)+'</b>'+
+    '<span><input type="checkbox" id="le'+i+'"'+(b.enabled?' checked':'')+'> aktiv</span></div>'+
+    '<div class="row c2"><div><label class="f">Name</label><input id="ln'+i+'" value="'+esc(b.name)+'"></div>'+
+    '<div><label class="f">Ausdruck</label><input class="mono" id="lx'+i+'" value="'+esc(b.expr)+'"></div></div></div>').join('');
+  const sup=I.lg.suppress||[];
+  $('sup').innerHTML=I.bn.map((n,i)=>(n&&!n.startsWith('L: '))?'<label class="lp"><input type="checkbox" id="su'+i+'"'+(sup.includes(i)?' checked':'')+'> <span class="nr">'+(i+1)+'</span> '+esc(n)+'</label>':'').join('');
+}
+function renderLogik(){(S.lb||[]).forEach((v,i)=>{const e=$('ll'+i);if(e)e.className='lamp'+(v?' on':'');});}
+async function lSave(b){
+  const lb=(I.lg.buttons||[]).map((x,i)=>({name:$('ln'+i).value,expr:$('lx'+i).value,enabled:$('le'+i).checked}));
+  const sup=[];I.bn.forEach((n,i)=>{const e=$('su'+i);if(e&&e.checked)sup.push(i);});
+  const d=await post('/logik',{buttons:lb,suppress:sup});
+  if(d&&d.lg)I.lg=d.lg;
+  melde('lmsg',d&&d.ok,d&&d.ok?'Gespeichert – gilt sofort.':'Nicht gespeichert'+(d&&d.f?': '+d.f.join(', '):''));
+}
+
+/* ---------- LEDs ---------- */
+function bauLeds(){
+  const le=I.lg.leds||[];
+  $('ledw').style.display=I.ln.length?'':'none';
+  $('pxw').style.display=I.px?'':'none';
+  $('noled').style.display=(I.ln.length||I.px)?'none':'';
+  $('ledl').innerHTML=I.ln.map((n,i)=>'<div class="item"><div class="hd"><b><span class="lamp" id="dl'+i+'" style="display:inline-block"></span> '+esc(n)+'</b></div>'+
+    '<div class="row c2"><div><label class="f">Dauerlicht wenn</label><input class="mono" id="don'+i+'" value="'+esc((le[i]||{}).on)+'"></div>'+
+    '<div><label class="f">Blinken wenn</label><input class="mono" id="dbl'+i+'" value="'+esc((le[i]||{}).blink)+'"></div></div></div>').join('');
+  if(!I.px)return;
+  const p=I.lg.pixels||{};
+  $('px_rpm').value=p.rpm||'';$('px_max').value=p.rpm_max==null?100:p.rpm_max;
+  $('px_start').value=p.start==null?60:p.start;$('px_flash').value=p.flash||0;
+  const cols=(p.colors||['#00ff00','#ffff00','#ff0000']).slice(0,3);while(cols.length<3)cols.push('#ff0000');
+  $('px_cols').innerHTML=cols.map((c,i)=>'<input type="color" id="pc_'+i+'" value="'+esc(c)+'">').join('')+
+    '<input type="color" id="pc_f" value="'+esc(p.flash_color||'#0000ff')+'">';
+  $('pxv').innerHTML=Array.from({length:I.px},()=>'<span></span>').join('');
+  pxRegelnBauen(p.rules||[]);
+}
+function pxRegelnBauen(rules){
+  $('px_rules').innerHTML=rules.map((r,i)=>'<div class="item pxr"><div class="row c4" style="grid-template-columns:1fr 2fr 50px 30px">'+
+    '<div><label class="f">LEDs</label><input class="r_l" value="'+esc(r.leds)+'"></div>'+
+    '<div><label class="f">wenn</label><input class="mono r_x" value="'+esc(r.expr)+'"></div>'+
+    '<div><label class="f">Farbe</label><input type="color" class="r_c" value="'+esc(r.color||'#ffffff')+'"></div>'+
+    '<div><button class="x" onclick="this.closest(\'.pxr\').remove()">✕</button></div></div>'+
+    '<label class="f"><input type="checkbox" class="r_b"'+(r.blink?' checked':'')+'> blinken</label></div>').join('');
+}
+function pxRegelnLesen(){
+  return [...document.querySelectorAll('.pxr')].map(e=>({leds:e.querySelector('.r_l').value,expr:e.querySelector('.r_x').value,
+    color:e.querySelector('.r_c').value,blink:e.querySelector('.r_b').checked}));
+}
+function pxRegel(){const r=pxRegelnLesen();r.push({leds:'0-'+(I.px-1),expr:'',color:'#ffffff',blink:false});pxRegelnBauen(r);}
+function renderLeds(){(S.led||[]).forEach((v,i)=>{const e=$('dl'+i);if(e)e.className='lamp'+(v?' on':'');});}
+async function dSave(){
+  const body={leds:I.ln.map((n,i)=>({on:$('don'+i).value,blink:$('dbl'+i).value}))};
+  if(I.px){
+    const mx=$('px_max').value.trim();
+    body.pixels={rpm:$('px_rpm').value.trim(),rpm_max:isNaN(+mx)||mx===''?mx:+mx,start:+$('px_start').value||0,
+      flash:+$('px_flash').value||0,colors:[0,1,2].map(i=>$('pc_'+i).value),flash_color:$('pc_f').value,rules:pxRegelnLesen()};
+  }
+  const d=await post('/logik',body);
+  if(d&&d.lg)I.lg=d.lg;
+  melde('dmsg',d&&d.ok,d&&d.ok?'Gespeichert – gilt sofort.':'Nicht gespeichert');
+}
+
+/* ---------- Rumble ---------- */
+function bauRumble(){
+  if(!I.rn.length)return;
+  if(!I.rd){$('rax').innerHTML='<div class="se">Rumble-Pins nicht nutzbar – siehe Hinweise im Status.</div>';return;}
+  $('rax').innerHTML=I.rn.map((n,i)=>{
+    const c=I.rc[i]||{};
+    const fld=(k,l)=>'<div><label>'+l+'</label><input type="number" min="0" max="1000" id="r_'+k+i+'" value="'+(c[k]==null?0:c[k])+'"></div>';
+    return '<div class="a"><div class="hd"><b>'+esc(n)+'</b><span id="rp'+i+'">0%</span></div>'+
+      '<div class="bb"><div class="b" id="rbar'+i+'"></div></div>'+
+      '<div class="meta">SimHub-Name: <code>'+esc(I.rt[i])+'</code> · <span id="rv'+i+'">–</span></div>'+
+      '<div class="rg">'+fld('schwelle','Schwelle %')+fld('min','min %')+fld('max','max %')+fld('kick','Kick %')+fld('gain','Gain %')+fld('brems','Brems ms')+'</div>'+
+      '<input style="margin-top:10px;accent-color:#e94560" type="range" min="0" max="100" value="0" id="rt'+i+'" oninput="rTest('+i+')">'+
+      '<div class="br"><button class="btn s" onclick="rPuls('+i+')">Kurzer Stoß</button><button class="btn r" onclick="rStop('+i+')">Test aus</button></div></div>';
+  }).join('');
+}
+async function rSave(b){
+  const z=(id,d)=>{const v=parseInt($(id).value,10);return isNaN(v)?d:v;};
+  const body=I.rn.map((n,i)=>({schwelle:z('r_schwelle'+i,4),min:z('r_min'+i,8),max:z('r_max'+i,100),
+    kick:z('r_kick'+i,12),gain:z('r_gain'+i,100),brems:z('r_brems'+i,0),an:true}));
+  const d=await post('/rumble_set',body);
+  if(d&&d.rc)I.rc=d.rc;
+  b.textContent=(d&&d.ok)?'Gespeichert':'Nicht speicherbar';setTimeout(()=>b.textContent='Einstellungen speichern',1400);
+}
+/* Ein Schieberegler feuert bei jeder Pixelbewegung. Ungedrosselt stauen sich
+   die Anfragen im Gerät und der Motor läuft Sekunden später mit einem alten
+   Wert los. Deshalb wird der Wert nur gemerkt und im Takt geschickt - der Takt
+   ist zugleich das Lebenszeichen für die Totmannschaltung. */
+let seqN=Date.now(),rtWert={},rtLoop=null;
+function rtPumpe(){const ks=Object.keys(rtWert);if(!ks.length){if(rtLoop){clearInterval(rtLoop);rtLoop=null;}return;}
+  for(const k of ks)api('/rumble_test?k='+k+'&v='+rtWert[k]+'&s='+(++seqN));}
+function rTest(i){const v=parseInt($('rt'+i).value,10);if(!v){rStop(i);return;}const neu=!(i in rtWert);rtWert[i]=v;if(neu)rtPumpe();if(!rtLoop)rtLoop=setInterval(rtPumpe,250);}
+function rStop(i){const e=$('rt'+i);if(e)e.value=0;delete rtWert[i];api('/rumble_test?k='+i+'&v=-1&s='+(++seqN));}
+async function rPuls(i){await api('/rumble_test?k='+i+'&v=100&s='+(++seqN));setTimeout(()=>api('/rumble_test?k='+i+'&v=-1&s='+(++seqN)),140);}
+async function rAllesAus(){if(!I||!I.rn.length)return;rtWert={};if(rtLoop){clearInterval(rtLoop);rtLoop=null;}
+  I.rn.forEach((n,i)=>{const e=$('rt'+i);if(e)e.value=0;});await api('/rumble_stop?s='+(++seqN));}
+window.addEventListener('beforeunload',()=>{if(I&&I.rn.length&&navigator.sendBeacon)navigator.sendBeacon('/rumble_stop?s='+(++seqN));});
+function renderRumble(){
+  $('tdg').innerHTML=teleText();
+  (S.rb||[]).forEach((v,i)=>{const b=$('rbar'+i);if(!b)return;b.style.width=v+'%';$('rp'+i).textContent=v+'%';
+    const n=(I.rt[i]||'').toLowerCase(),w=S.tv&&n in S.tv?S.tv[n]:null;$('rv'+i).textContent=w===null?'keine Daten':'SimHub: '+w;});
+}
+
+/* ---------- Kurven ---------- */
+function bauKTabs(){$('kt').innerHTML=I.an.map((n,i)=>'<div class="ktab'+(i?'':' on')+'" onclick="setAi('+i+')">'+esc(n)+'</div>').join('');}
+function setAi(i){ai=i;document.querySelectorAll('.ktab').forEach((t,j)=>t.classList.toggle('on',j===i));draw();}
+const cv=$('cv'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,P=28,IW=W-2*P,IH=H-2*P;
+const px=x=>P+x/100*IW,py=y=>P+(1-y/100)*IH,fx=x=>(x-P)/IW*100,fy=y=>(1-(y-P)/IH)*100;
+function draw(){
+  ctx.clearRect(0,0,W,H);ctx.strokeStyle='#1a3a5e';ctx.lineWidth=1;
+  [0,25,50,75,100].forEach(v=>{ctx.beginPath();ctx.moveTo(px(v),P);ctx.lineTo(px(v),P+IH);ctx.moveTo(P,py(v));ctx.lineTo(P+IW,py(v));ctx.stroke();});
+  ctx.fillStyle='#556';ctx.font='9px system-ui';ctx.textAlign='center';[0,25,50,75,100].forEach(v=>ctx.fillText(v+'%',px(v),H-3));
+  ctx.textAlign='right';[25,50,75,100].forEach(v=>ctx.fillText(v+'%',P-3,py(v)+3));
+  ctx.beginPath();ctx.strokeStyle='#334';ctx.setLineDash([4,4]);ctx.moveTo(px(0),py(0));ctx.lineTo(px(100),py(100));ctx.stroke();ctx.setLineDash([]);
+  if(!I||!I.cv.length)return;
+  const pts=I.cv[ai];
+  ctx.beginPath();ctx.strokeStyle='#e94560';ctx.lineWidth=2.5;ctx.moveTo(px(pts[0][0]),py(pts[0][1]));
+  for(let i=1;i<pts.length;i++)ctx.lineTo(px(pts[i][0]),py(pts[i][1]));ctx.stroke();
+  pts.forEach((p,i)=>{ctx.beginPath();ctx.arc(px(p[0]),py(p[1]),i===di?8:6,0,Math.PI*2);ctx.fillStyle=i===di?'#f5a623':'#e94560';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();});
+  if(S){ctx.beginPath();ctx.strokeStyle='#7eb8f7';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.moveTo(px(S.i[ai]),P);ctx.lineTo(px(S.i[ai]),P+IH);ctx.stroke();ctx.setLineDash([]);}
+}
+function gpos(e){const r=cv.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return[(t.clientX-r.left)*W/r.width,(t.clientY-r.top)*H/r.height];}
+function near(mx,my){let b=-1,bd=16;I.cv[ai].forEach((p,i)=>{const d=Math.hypot(px(p[0])-mx,py(p[1])-my);if(d<bd){bd=d;b=i;}});return b;}
+function clamp(i,x,y){const p=I.cv[ai];x=Math.max(0,Math.min(100,x));y=Math.max(0,Math.min(100,y));
+  if(i>0)x=Math.max(p[i-1][0]+1,x);if(i<p.length-1)x=Math.min(p[i+1][0]-1,x);if(i===0)x=0;if(i===p.length-1)x=100;return[Math.round(x),Math.round(y)];}
+cv.addEventListener('mousedown',e=>{const[mx,my]=gpos(e);di=near(mx,my);
+  if(di<0){const x=fx(mx),y=fy(my);if(x<0||x>100||y<0||y>100)return;const p=I.cv[ai];let ins=p.length;
+    for(let i=0;i<p.length;i++)if(p[i][0]>x){ins=i;break;}p.splice(ins,0,[Math.round(x),Math.round(y)]);di=ins;}draw();});
+cv.addEventListener('mousemove',e=>{if(di<0)return;const[mx,my]=gpos(e);I.cv[ai][di]=clamp(di,fx(mx),fy(my));draw();});
+cv.addEventListener('mouseup',()=>{di=-1;draw();});cv.addEventListener('mouseleave',()=>{di=-1;});
+cv.addEventListener('touchstart',e=>{e.preventDefault();const[mx,my]=gpos(e);di=near(mx,my);},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(di<0)return;const[mx,my]=gpos(e);I.cv[ai][di]=clamp(di,fx(mx),fy(my));draw();},{passive:false});
+cv.addEventListener('touchend',()=>{di=-1;});
+cv.addEventListener('dblclick',e=>{const[mx,my]=gpos(e);const i=near(mx,my);if(i>0&&i<I.cv[ai].length-1){I.cv[ai].splice(i,1);draw();}});
+function pre(t){const p={lin:[[0,0],[25,25],[50,50],[75,75],[100,100]],prog:[[0,0],[25,8],[50,25],[75,55],[100,100]],
+  deg:[[0,0],[25,45],[50,75],[75,92],[100,100]],s:[[0,0],[25,10],[50,50],[75,90],[100,100]]};I.cv[ai]=p[t].map(a=>a.slice());draw();}
+async function kSave(){const b=$('sbtn');b.textContent='…';const d=await post('/kurve',{achse:ai,curve:I.cv[ai]});
+  b.textContent=(d&&d.ok)?'Gespeichert':'Fehler';setTimeout(()=>b.textContent='Speichern',1800);}
+
+/* ---------- Belegung ---------- */
+/* Das Formular arbeitet direkt auf K, einer Kopie von device.json. Jedes Feld
+   traegt in data-p den Pfad, unter dem sein Wert in K steht. */
+const USAGES=['x','y','z','rx','ry','rz','slider','dial','wheel'];
+function pinOpts(sel,analog){
+  let h='<option value="">–</option>',da=false;
+  for(const p of I.pins){
+    if(p.n===sel)da=true;
+    const lbl=p.n+(p.alias.length?' ('+p.alias.join(', ')+')':'')+(p.a?' · analog':'')+(p.r?' · '+p.r:'');
+    h+='<option value="'+esc(p.n)+'"'+(p.n===sel?' selected':'')+(p.r||(analog&&!p.a)?' disabled':'')+'>'+esc(lbl)+'</option>';
+  }
+  if(sel&&!da){const al=I.pins.find(p=>p.alias.includes(sel));
+    h+='<option value="'+esc(sel)+'" selected>'+esc(sel)+(al?' (= '+al.n+')':' (gibt es hier nicht)')+'</option>';}
+  return h;
+}
+function hole(p){return p.split('.').reduce((o,k)=>o==null?undefined:o[k],K);}
+function setze(p,v){const ks=p.split('.');let o=K;for(let i=0;i<ks.length-1;i++){if(o[ks[i]]==null)o[ks[i]]={};o=o[ks[i]];}
+  const k=ks[ks.length-1];
+  if(Array.isArray(o)){o[k]=v==null?'':v;return;}
+  if(v===''||v===null||(typeof v==='number'&&isNaN(v)))delete o[k];else o[k]=v;}
+function pinF(p,lbl,analog){return '<div><label class="f">'+lbl+'</label><select class="pin" data-p="'+p+'">'+pinOpts(hole(p)||'',analog)+'</select></div>';}
+function txtF(p,lbl,cls){let v=hole(p);if(p==='usb.pid')v=(v==null||v<0)?'':'0x'+Number(v).toString(16).toUpperCase();return '<div><label class="f">'+lbl+'</label><input data-p="'+p+'"'+(cls?' class="'+cls+'"':'')+' value="'+esc(v==null?'':v)+'"></div>';}
+function numF(p,lbl){const v=hole(p);return '<div><label class="f">'+lbl+'</label><input type="number" step="any" data-p="'+p+'" data-n="1" value="'+(v==null?'':v)+'"></div>';}
+function chkF(p,lbl){return '<div><label class="f"><input type="checkbox" data-p="'+p+'" data-c="1"'+(hole(p)?' checked':'')+'> '+lbl+'</label></div>';}
+function selF(p,lbl,opts){const v=hole(p);return '<div><label class="f">'+lbl+'</label><select data-p="'+p+'">'+
+  opts.map(o=>{const[w,t]=Array.isArray(o)?o:[o,o];return '<option value="'+w+'"'+(String(v)===String(w)?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>';}
+function weg(liste,i){K[liste].splice(i,1);bauForm();}
+function dazu(liste,obj){if(!Array.isArray(K[liste]))K[liste]=[];K[liste].push(obj);bauForm();}
+function kopf(t,liste,i){return '<div class="hd"><b>'+t+'</b><button class="x" onclick="weg(\''+liste+'\','+i+')">✕</button></div>';}
+
+function bauForm(){
+  for(const k of ['buttons','shift','encoders','axes','leds'])if(!Array.isArray(K[k]))K[k]=[];
+  if(!K.usb)K.usb={};if(!K.wifi)K.wifi={};if(!K.ble)K.ble={};if(!K.options)K.options={};if(!K.logic)K.logic={};
+  let h='';
+  h+='<div class="a"><b>Allgemein</b>'+
+    '<div class="row c2">'+txtF('name','Name')+txtF('usb.product','USB-Produktname')+'</div>'+
+    '<div class="row c3">'+txtF('usb.pid','USB-PID (z. B. 0x4713)','mono')+selF('usb.usage','Gerätetyp',[['joystick','Joystick'],['gamepad','Gamepad']])+chkF('ble.enabled','Bluetooth')+'</div>'+
+    '<div class="row c2">'+pinF('config_pin','Konfigurationstaster')+pinF('status_led','Status-LED')+'</div>'+
+    '<div class="row c3">'+txtF('wifi.ssid','WLAN-Name')+txtF('wifi.password','WLAN-Passwort')+txtF('ble.name','Bluetooth-Name')+'</div>'+
+    '<div class="row c4">'+numF('options.debounce_ms','Entprellen ms')+numF('options.pulse_ms','Impuls ms')+numF('options.axis_threshold','Achs-Schwelle')+numF('options.axis_avg','Mittelung')+'</div>'+
+    chkF('options.hid_in_wifi','Eingaben auch bei aktivem WLAN senden')+'</div>';
+
+  h+='<div class="a"><b>Taster</b> <span class="sub">direkt gegen GND</span>';
+  K.buttons.forEach((b,i)=>{h+='<div class="item"><div class="row" style="grid-template-columns:1.1fr 1.4fr .7fr 1.2fr 22px">'+
+    pinF('buttons.'+i+'.pin','Taster '+(i+1))+txtF('buttons.'+i+'.name','Name')+numF('buttons.'+i+'.btn','Nr.')+
+    selF('buttons.'+i+'.mode','Art',[['normal','normal'],['pulse','Impuls (Kippschalter)'],['toggle','Umschalter']])+
+    '<button class="x" onclick="weg(\'buttons\','+i+')">✕</button></div>'+chkF('buttons.'+i+'.invert','Öffner (invertiert)')+'</div>';});
+  if(K.buttons.length)h+='<div class="sub" style="margin-bottom:6px">Nr. leer = nächste freie Buttonnummer</div>';
+  h+='<button class="btn s" style="width:100%" onclick="dazu(\'buttons\',{pin:\'\',name:\'\'})">+ Taster</button></div>';
+
+  const m=K.matrix;
+  h+='<div class="a"><b>Tastenmatrix</b> <span class="sub">mit Dioden</span>';
+  if(m){
+    h+='<div class="item">'+'<div class="hd"><b>'+(m.rows||[]).length+' × '+(m.cols||[]).length+'</b><button class="x" onclick="K.matrix=null;bauForm()">✕</button></div>';
+    h+='<label class="f">Zeilen</label><div class="row c4">'+(m.rows||[]).map((r,i)=>'<select class="pin" data-p="matrix.rows.'+i+'">'+pinOpts(r)+'</select>').join('')+'</div>';
+    h+='<div class="br"><button class="btn s k" onclick="K.matrix.rows.push(\'\');bauForm()">+ Zeile</button><button class="btn s k" onclick="K.matrix.rows.pop();bauForm()">− Zeile</button></div>';
+    h+='<label class="f">Spalten</label><div class="row c4">'+(m.cols||[]).map((r,i)=>'<select class="pin" data-p="matrix.cols.'+i+'">'+pinOpts(r)+'</select>').join('')+'</div>';
+    h+='<div class="br"><button class="btn s k" onclick="K.matrix.cols.push(\'\');bauForm()">+ Spalte</button><button class="btn s k" onclick="K.matrix.cols.pop();bauForm()">− Spalte</button></div>';
+    h+='<div class="row c2">'+selF('matrix.diodes','Dioden',[['col2row','Spalte → Zeile (Kathode an Zeile)'],['row2col','Zeile → Spalte']])+numF('matrix.btn','erste Button-Nr.')+'</div>';
+    h+='<label class="f">Namen, durch Komma getrennt (Zeile für Zeile)</label><input data-p="matrix.names" data-l="1" value="'+esc((m.names||[]).join(', '))+'">';
+    h+='</div>';
+  }else h+='<button class="btn s" style="width:100%;margin-top:6px" onclick="K.matrix={rows:[\'\',\'\'],cols:[\'\',\'\'],diodes:\'col2row\'};bauForm()">+ Matrix</button>';
+  h+='</div>';
+
+  h+='<div class="a"><b>Schieberegister</b> <span class="sub">74HC165, je 8 Eingänge</span>';
+  K.shift.forEach((s,i)=>{h+='<div class="item">'+kopf('Kette '+(i+1),'shift',i)+
+    '<div class="row c3">'+pinF('shift.'+i+'.data','Daten (QH)')+pinF('shift.'+i+'.clock','Takt (CLK)')+pinF('shift.'+i+'.latch','Latch (SH/LD)')+'</div>'+
+    '<div class="row c3">'+numF('shift.'+i+'.count','Eingänge')+numF('shift.'+i+'.btn','erste Button-Nr.')+chkF('shift.'+i+'.active_high','gedrückt = high')+'</div></div>';});
+  h+='<button class="btn s" style="width:100%" onclick="dazu(\'shift\',{data:\'\',clock:\'\',latch:\'\',count:8})">+ Schieberegister</button></div>';
+
+  h+='<div class="a"><b>Encoder</b> <span class="sub">je Raste ein Tastendruck rechts/links</span>';
+  K.encoders.forEach((e,i)=>{h+='<div class="item">'+kopf('Encoder '+(i+1),'encoders',i)+
+    '<div class="row c3">'+pinF('encoders.'+i+'.a','A')+pinF('encoders.'+i+'.b','B')+txtF('encoders.'+i+'.name','Name')+'</div>'+
+    '<div class="row c4">'+numF('encoders.'+i+'.btn','erste Button-Nr.')+selF('encoders.'+i+'.divisor','Flanken/Raste',[1,2,4])+numF('encoders.'+i+'.pulse_ms','Impuls ms')+chkF('encoders.'+i+'.reverse','umkehren')+'</div></div>';});
+  h+='<button class="btn s" style="width:100%" onclick="dazu(\'encoders\',{a:\'\',b:\'\',divisor:4,pulse_ms:30})">+ Encoder</button></div>';
+
+  h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>';
+  K.axes.forEach((a,i)=>{const t=a.type||'pot',p='axes.'+i+'.';
+    h+='<div class="item">'+kopf('Achse '+(i+1),'axes',i)+
+    '<div class="row c3">'+selF(p+'type','Typ',[['pot','Poti / Hall'],['as5600','AS5600 (Winkel)'],['hx711','Wägezelle HX711'],['encoder','Encoder']])+selF(p+'usage','HID-Achse',USAGES)+txtF(p+'name','Name')+'</div>';
+    if(t==='hx711')h+='<div class="row c4">'+pinF(p+'dt','DT')+pinF(p+'sck','SCK')+selF(p+'mode','Auslesen',[['pio','PIO (Pico)'],['bitbang','Bit-Banging']])+numF(p+'filter','Filter')+'</div>';
+    else if(t==='encoder')h+='<div class="row c4">'+pinF(p+'a','A')+pinF(p+'b','B')+numF(p+'steps','Rasten 0→100 %')+chkF(p+'center','Start in der Mitte')+'</div>';
+    else h+='<div class="row c3">'+pinF(p+'pin','Pin',true)+numF(p+'deadzone','Totzone %')+numF(p+'margin','Reserve %')+'</div>';
+    h+='</div>';});
+  h+='<button class="btn s" style="width:100%" onclick="dazu(\'axes\',{type:\'pot\',pin:\'\',usage:\''+(USAGES.find(u=>!K.axes.some(a=>a.usage===u))||'slider')+'\'})">+ Achse</button></div>';
+
+  h+='<div class="a"><b>Logik-Buttons</b><div class="row c2">'+numF('logic.count','Anzahl')+numF('logic.first','erste Button-Nr. (leer = auto)')+'</div></div>';
+
+  h+='<div class="a"><b>LEDs</b>';
+  K.leds.forEach((l,i)=>{h+='<div class="item">'+kopf('LED '+(i+1),'leds',i)+'<div class="row c2">'+pinF('leds.'+i+'.pin','Pin')+txtF('leds.'+i+'.name','Name')+'</div></div>';});
+  h+='<button class="btn s" style="width:100%" onclick="dazu(\'leds\',{pin:\'\',name:\'\'})">+ LED</button>';
+  if(K.pixels)h+='<div class="item"><div class="hd"><b>WS2812</b><button class="x" onclick="K.pixels=null;bauForm()">✕</button></div>'+
+    '<div class="row c4">'+pinF('pixels.pin','Daten-Pin')+numF('pixels.count','Anzahl')+numF('pixels.brightness','Helligkeit 0–1')+selF('pixels.order','Reihenfolge',['GRB','RGB','GRBW','RGBW'])+'</div></div>';
+  else h+='<button class="btn s" style="width:100%;margin-top:6px" onclick="K.pixels={pin:\'\',count:10,brightness:0.3,order:\'GRB\'};bauForm()">+ WS2812-Streifen</button>';
+  h+='</div>';
+
+  h+='<div class="a"><b>Rumble</b> <span class="sub">DRV8871, IN1/IN2 auf derselben PWM-Einheit (GP4/GP5 …)</span>';
+  if(K.rumble){if(!Array.isArray(K.rumble.channels))K.rumble.channels=[];
+    K.rumble.channels.forEach((k,i)=>{const p='rumble.channels.'+i+'.';h+='<div class="item"><div class="hd"><b>Motor '+(i+1)+'</b><button class="x" onclick="K.rumble.channels.splice('+i+',1);bauForm()">✕</button></div>'+
+      '<div class="row c4">'+pinF(p+'in1','IN1')+pinF(p+'in2','IN2')+txtF(p+'name','Name')+txtF(p+'tele','SimHub-Name')+'</div></div>';});
+    h+='<div class="row c3">'+numF('rumble.supply','Versorgung V')+numF('rumble.motor','Motor-Nenn V')+numF('rumble.tele_max','SimHub-Maximum')+'</div>';
+    h+='<div class="br"><button class="btn s" onclick="K.rumble.channels.push({in1:\'\',in2:\'\',name:\'\',tele:\'\'});bauForm()">+ Motor</button><button class="btn r" onclick="K.rumble=null;bauForm()">Rumble entfernen</button></div>';
+  }else h+='<button class="btn s" style="width:100%;margin-top:6px" onclick="K.rumble={channels:[{in1:\'\',in2:\'\',name:\'Motor 1\',tele:\'motor1\'}],supply:12,motor:12,pwm_hz:20000,kick_ms:50,brake_ms:80,tele_max:100};bauForm()">+ Rumble</button>';
+  h+='</div>';
+
+  $('cfgform').innerHTML=h;
+  $('cfgform').querySelectorAll('[data-p]').forEach(e=>e.addEventListener('change',feld));
+  markiereDoppelte();
+  if($('jsonw').style.display!=='none')$('json').value=JSON.stringify(K,null,1);
+}
+function feld(ev){
+  const e=ev.target,p=e.dataset.p;
+  let v=e.dataset.c?e.checked:e.value;
+  if(e.dataset.n)v=v===''?'':+v;
+  if(e.dataset.l)v=v.split(',').map(s=>s.trim());
+  if(p==='usb.pid'){const s=String(v).trim();v=s===''?-1:(s.toLowerCase().startsWith('0x')?parseInt(s,16):parseInt(s,10));}
+  setze(p,v);
+  if(/\.type$/.test(p)||e.classList.contains('neu'))bauForm();else markiereDoppelte();
+}
+function markiereDoppelte(){
+  const id=n=>{const p=I.pins.find(x=>x.n===n||x.alias.includes(n));return p?p.n:n;};
+  const z={};const sels=[...$('cfgform').querySelectorAll('select.pin')];
+  sels.forEach(s=>{if(s.value)z[id(s.value)]=(z[id(s.value)]||0)+1;});
+  sels.forEach(s=>s.classList.toggle('dup',!!s.value&&z[id(s.value)]>1));
+}
+function bauPresets(){$('presel').innerHTML=I.presets.map(p=>'<option>'+esc(p)+'</option>').join('');}
+async function presetLaden(){
+  const n=$('presel').value;if(!n)return;
+  const d=await api('/preset?n='+encodeURIComponent(n));
+  if(!d){melde('cmsg',false,'Vorlage nicht lesbar');return;}
+  K=d;bauForm();melde('cmsg',true,'Vorlage „'+esc(n)+'“ geladen – noch nicht gespeichert. Pins prüfen!');
+}
+function aufbereiten(){
+  const k=JSON.parse(JSON.stringify(K));
+  if(typeof k.usb.pid==='string')k.usb.pid=parseInt(k.usb.pid);
+  if(k.matrix&&!(k.matrix.rows||[]).length)k.matrix=null;
+  return k;
+}
+async function pruefen(){
+  const d=await post('/pruefen',aufbereiten());
+  if(!d){melde('cmsg',false,'Keine Antwort');return;}
+  melde('cmsg',d.ok,d.ok?'In Ordnung – '+esc(d.info):'<b>Fehler:</b><br>'+d.f.map(esc).join('<br>'));
+}
+async function speichern(){
+  const d=await post('/config',aufbereiten());
+  if(!d){melde('cmsg',false,'Keine Antwort');return;}
+  if(!d.ok){melde('cmsg',false,'<b>Nicht gespeichert:</b><br>'+d.f.map(esc).join('<br>'));return;}
+  melde('cmsg',true,'Gespeichert ('+esc(d.info)+'). Das Gerät startet neu – in ein paar Sekunden wieder mit dem WLAN verbinden. Im Spiel Buttons/Achsen prüfen.');
+  setTimeout(()=>{document.body.innerHTML='<h1>Neustart …</h1><p style="color:#8ab;margin-top:10px">Das Gerät startet mit der neuen Belegung. Den Access Point mit dem Konfigurationstaster wieder einschalten.</p>';},1500);
+}
+function jsonUmschalten(){const w=$('jsonw');const an=w.style.display==='none';w.style.display=an?'':'none';if(an)$('json').value=JSON.stringify(K,null,1);}
+function jsonUebernehmen(){try{K=JSON.parse($('json').value);bauForm();melde('cmsg',true,'Übernommen – noch nicht gespeichert.');}
+  catch(e){melde('cmsg',false,'JSON fehlerhaft: '+esc(e.message));}}
+
+init();
+</script></body></html>

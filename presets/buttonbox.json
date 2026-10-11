@@ -1,0 +1,32 @@
+{
+  "name": "Buttonbox",
+  "usb": {"manufacturer": "SimRacing", "product": "Buttonbox", "pid": 18193, "usage": "gamepad"},
+  "wifi": {"ssid": "Pico-Buttonbox", "password": "buttonbox123", "channel": 6, "port": 80},
+  "ble": {"enabled": false},
+  "config_pin": "GP15",
+  "status_led": "",
+  "telemetry": {"enabled": true, "timeout": 2.0},
+  "options": {"debounce_ms": 20, "axis_threshold": 128, "blink_s": 0.5},
+  "buttons": [
+    {"pin": "GP2", "name": "Taster 1"},
+    {"pin": "GP3", "name": "Taster 2"},
+    {"pin": "GP4", "name": "Taster 3"},
+    {"pin": "GP5", "name": "Taster 4"},
+    {"pin": "GP12", "name": "Anlasser"},
+    {"pin": "GP6", "name": "Schalter 1"},
+    {"pin": "GP7", "name": "Schalter 2"},
+    {"pin": "GP8", "name": "Schalter 3"},
+    {"pin": "GP9", "name": "Schalter 4"},
+    {"pin": "GP10", "name": "Zuendung 1"},
+    {"pin": "GP11", "name": "Zuendung 2"}
+  ],
+  "axes": [
+    {"type": "pot", "pin": "GP26", "usage": "rx", "name": "Achse 1"},
+    {"type": "pot", "pin": "GP27", "usage": "ry", "name": "Achse 2"},
+    {"type": "pot", "pin": "GP28", "usage": "rz", "name": "Achse 3"}
+  ],
+  "logic": {"count": 16, "first": 23},
+  "leds": [
+    {"pin": "GP16", "name": "Anlasser-LED", "on": "motor", "blink": "AND(b9,b10)"}
+  ]
+}
