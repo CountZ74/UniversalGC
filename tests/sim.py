@@ -48,7 +48,7 @@ if not ROOT:
     print("CIRCUITPY simuliert in", ROOT)
 
 GERAET = {"device.json", "device.bak.json", "cfg_pending", "calibration.json",
-          "logic.json", "rumble.json", "index.html", "presets", "fehler.txt"}
+          "logic.json", "rumble.json", "index.html", "presets", "fehler.txt", "wartung"}
 
 
 def _map(p):

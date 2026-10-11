@@ -67,6 +67,21 @@ else:
         meldungen.append("Taster %s nicht lesbar: %s" % (pin, e))
         einrichtung = True
 
+# Wartungsmodus ohne Taster: die Weboberflaeche oder die Konsole legt /wartung
+# an und startet neu (siehe README). Die Markierung gilt nur fuer diesen einen
+# Start und wird gleich wieder geloescht.
+try:
+    os.stat(cfg.WARTUNG_FILE)
+    wartungsmodus = True
+    try:
+        storage.remount("/", readonly=False)
+        os.remove(cfg.WARTUNG_FILE)
+        storage.remount("/", readonly=True)     # Laufwerk wieder fuer den PC
+    except Exception as e:
+        meldungen.append("Wartungs-Markierung nicht loeschbar: %s" % e)
+except OSError:
+    pass
+
 if einrichtung:
     meldungen.append("Einrichtung: kein Konfigurationstaster - CIRCUITPY "
                      "bleibt sichtbar, das Geraet speichert nichts")

@@ -17,6 +17,7 @@ import json
 CONFIG_FILE  = "/device.json"
 BACKUP_FILE  = "/device.bak.json"
 PENDING_FILE = "/cfg_pending"       # neue Konfiguration noch nicht bestaetigt
+WARTUNG_FILE = "/wartung"           # naechster Start einmalig mit Laufwerk
 
 REPORT_ID  = 4
 AXIS_MAX   = 65535

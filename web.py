@@ -283,6 +283,12 @@ class Web:
                            "application/json", "no-store")
             else:
                 self.send(conn, "404 Not Found", "text/plain", "404")
+        elif p == "/wartung":
+            # Naechster Start mit sichtbarem Laufwerk, ohne Taster
+            ok = app.wartung_anfordern()
+            self.json(conn, {"ok": ok})
+            if ok:
+                app.neustart_bei = time.monotonic() + 0.8
         elif p == "/neustart":
             self.json(conn, {"ok": True})
             app.neustart_bei = time.monotonic() + 0.8

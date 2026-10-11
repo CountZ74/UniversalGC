@@ -552,6 +552,15 @@ class App:
         r["neustart"] = True
         return r
 
+    def wartung_anfordern(self):
+        """Beim naechsten Start bleibt CIRCUITPY sichtbar (einmalig)."""
+        try:
+            with open(cfg.WARTUNG_FILE, "w") as f:
+                f.write("1")
+            return True
+        except OSError:
+            return False
+
     def bestaetigen(self, now):
         """Neue Belegung laeuft sauber - Rueckfall-Markierung loeschen."""
         if self.start_zeit is None or now - self.start_zeit < BESTAETIGT_NACH:

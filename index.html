@@ -91,6 +91,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair;border-radius
     <div class="meta" id="sver" style="line-height:1.7"></div></div>
   <div class="dg" id="sdg">Telemetrie: &hellip;</div>
   <button class="wlan" onclick="wlanAus()">WLAN aus &ndash; zur&uuml;ck in den Normalbetrieb</button>
+  <button class="wlan" onclick="wartung()">Neustart mit Laufwerk CIRCUITPY (Wartungsmodus)</button>
 </div>
 
 <!-- Achsen -->
@@ -339,6 +340,12 @@ function render(){
 async function poll(){
   if(!pending&&tabAkt!=='b'){const d=await api('/data');if(d){S=d;render();}}
   setTimeout(poll,(S&&S.st==='sweep')?200:400);
+}
+async function wartung(){
+  if(!confirm('Das Gerät startet neu und erscheint einmalig als Laufwerk CIRCUITPY. Dateien dann im Dateimanager oder mit Thonny kopieren. Weiter?'))return;
+  const d=await api('/wartung');
+  document.body.innerHTML=d&&d.ok?'<h1>Neustart …</h1><p style="color:#8ab;margin-top:10px">Gleich erscheint das Laufwerk CIRCUITPY. Beim nächsten normalen Einstecken ist es wieder weg.</p>'
+    :'<h1>Nicht möglich</h1><p style="color:#8ab;margin-top:10px">Das Laufwerk ist schon sichtbar oder das Dateisystem schreibgeschützt.</p>';
 }
 async function wlanAus(){
   await api('/wlan_aus');

@@ -119,6 +119,20 @@ das spart beim Laden viel RAM. Die Statusseite zeigt den freien Speicher.
   Logik) kann ihre erste Nummer mit `btn` festlegen. So bleiben die Zuordnungen im Spiel
   gültig, wenn später etwas dazukommt.
 
+### Wartungsmodus ohne Taster
+
+Thonny lädt bei CircuitPython über das Laufwerk `CIRCUITPY` hoch – im Normalbetrieb ist es
+aus. Ohne den Konfigurationstaster zu drücken geht es so:
+
+- Weboberfläche, Tab *Status*: **Neustart mit Laufwerk CIRCUITPY**, oder
+- in der Thonny-Shell (Strg+C, dann):
+  ```python
+  open("/wartung", "w").close(); import microcontroller; microcontroller.reset()
+  ```
+
+Das Gerät startet einmalig mit sichtbarem Laufwerk. Beim nächsten Einstecken ist alles
+wieder normal.
+
 ### Rückfall
 
 Beim Speichern bleibt die alte Belegung als `device.bak.json` liegen und `cfg_pending`
