@@ -75,6 +75,11 @@ Beim ESP32-S3 beachten:
    ```
    Zwischendurch startet CircuitPython nach jeder kopierten Datei neu und meldet
    eventuell fehlende Module – das ist normal, solange noch nicht alles drauf ist.
+   Fehlt beim Einstecken noch eine Pflichtdatei, lässt `boot.py` das Laufwerk an
+   (in `boot_out.txt` steht dann, was fehlt). `boot.py` zuletzt zu kopieren bleibt
+   trotzdem der sicherste Weg.
+   Unter Linux vor dem Abziehen auswerfen (oder `sync`), sonst sind die letzten
+   Dateien eventuell noch nicht vollständig geschrieben.
 3. Abziehen und neu einstecken. Erst jetzt läuft `boot.py`: das Gerät meldet sich mit
    seinen Buttons und Achsen, und `CIRCUITPY` ist nicht mehr als Laufwerk sichtbar – das
    Gerät braucht es selbst zum Speichern. Zurück ans Laufwerk kommt man über den

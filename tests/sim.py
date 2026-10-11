@@ -56,6 +56,8 @@ def _map(p):
         teil = p[1:].split("/", 1)[0]
         if teil in GERAET:
             return os.path.join(ROOT, p[1:])
+        if "/" not in p[1:] and teil.endswith((".py", ".mpy")):
+            return os.path.join(FW, teil)     # Module liegen im Repo
     return p
 
 

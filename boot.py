@@ -33,11 +33,22 @@ import storage
 import usb_hid
 import os
 
-import cfg
-import merker
+try:
+    import cfg
+    import merker
+except ImportError as e:
+    # Noch nicht alles kopiert. boot.py endet hier, das Laufwerk bleibt an.
+    print("boot.py: Installation unvollstaendig -", e)
+    raise
 
 meldungen = []
 FEHLSTARTS_BIS_RUECKFALL = 2
+
+# Ohne diese Dateien laeuft code.py nicht. Fehlt eine, bleibt das Laufwerk
+# sichtbar - so ist egal, in welcher Reihenfolge die Dateien kopiert werden.
+# (.mpy zaehlt genauso wie .py.)
+PFLICHT = ("code", "cfg", "merker", "pins", "eingaben", "achsen", "kalib",
+           "logik", "tele", "rumble", "leds", "ble_hid", "web")
 
 
 def existiert(pfad):
@@ -46,6 +57,12 @@ def existiert(pfad):
         return True
     except OSError:
         return False
+
+
+fehlend = [m for m in PFLICHT
+           if not (existiert("/%s.py" % m) or existiert("/%s.mpy" % m))]
+if not existiert("/index.html"):
+    fehlend.append("index.html")
 
 
 # --- Konfiguration, ggf. Rueckfall auf die alte ------------------------------
@@ -80,7 +97,10 @@ elif quelle == "backup":
 wartungsmodus = False
 einrichtung = False
 pin = c.get("config_pin")
-if quelle == "default" or not pin:
+if fehlend:
+    einrichtung = True
+    meldungen.append("es fehlt: " + ", ".join(fehlend))
+elif quelle == "default" or not pin:
     einrichtung = True
 else:
     try:
