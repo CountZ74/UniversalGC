@@ -127,7 +127,7 @@ def _datei_lesen(pfad):
         return json.load(f)
 
 
-def load(rueckfall=False):
+def load(rueckfall=False, leise=False):
     """device.json laden, bei Fehlern die Sicherung, zuletzt die Vorgaben.
 
     rueckfall=True nimmt gleich die Sicherung (die neue Belegung startete
@@ -142,7 +142,10 @@ def load(rueckfall=False):
         try:
             return normalize(_datei_lesen(pfad)), quelle
         except (OSError, ValueError) as e:
-            print("Konfiguration", pfad, "nicht lesbar:", e)
+            # boot.py ruft leise auf: boot_out.txt fasst nur 512 Byte, die
+            # sollen fuer die wichtigen Meldungen reichen.
+            if not leise:
+                print("Konfiguration", pfad, "nicht lesbar:", e)
     return normalize({}), "default"
 
 

@@ -65,9 +65,11 @@ if existiert(cfg.PENDING_FILE) and not rueckfall:
         else:
             merker.setzen(merker.FEHLSTARTS, n + 1)
 
-c, quelle = cfg.load(rueckfall)
-if quelle not in ("device", "rueckfall"):
-    meldungen.append("device.json fehlt oder ist kaputt - benutze %s" % quelle)
+c, quelle = cfg.load(rueckfall, leise=True)
+if quelle == "default":
+    meldungen.append("keine lesbare device.json")
+elif quelle == "backup":
+    meldungen.append("device.json kaputt - Sicherung benutzt")
 
 # --- Wartungsmodus? ----------------------------------------------------------
 
@@ -98,8 +100,7 @@ if merker.lesen(merker.WARTUNG) == merker.W_MAGIC:
     merker.setzen(merker.WARTUNG, 0)
 
 if einrichtung:
-    meldungen.append("Einrichtung: kein Konfigurationstaster - CIRCUITPY "
-                     "bleibt sichtbar, das Geraet speichert nichts")
+    meldungen.append("Einrichtung: Laufwerk bleibt sichtbar")
 elif wartungsmodus:
     meldungen.append("Wartungsmodus: CIRCUITPY sichtbar, Speichern aus")
 else:
