@@ -408,6 +408,9 @@ def validate(c, pin_id=None, analog_ok=None):
     pw = w.get("password") or ""
     if pw and len(pw) < 8:
         f.append("WLAN-Passwort braucht mindestens 8 Zeichen (oder leer)")
+    if not c.get("config_pin"):
+        f.append("Kein Konfigurationstaster - ohne ihn kommt man weder an das "
+                 "WLAN noch an das Laufwerk")
     if n_btn == 0 and not c["axes"]:
         f.append("Weder Buttons noch Achsen - das Geraet haette nichts zu melden")
     return f

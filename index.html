@@ -242,9 +242,11 @@ async function init(){
 /* ---------- Status ---------- */
 function bauStatus(){
   const f=I.f.slice();
-  if(I.q==='default')f.unshift('Noch keine device.json – unter <b>Belegung</b> eine Vorlage laden oder selbst einrichten.');
+  if(I.q==='default')f.unshift('Noch keine device.json. Das Laufwerk CIRCUITPY ist deshalb sichtbar und das Gerät kann nichts speichern: '+
+    'eine Vorlage aus <b>presets/</b> als <b>device.json</b> auf das Laufwerk kopieren und neu einstecken. '+
+    'Unter <b>Belegung</b> kann man die Vorlagen ansehen und prüfen; mit <b>JSON direkt bearbeiten</b> lässt sich der Inhalt kopieren.');
   if(I.q==='backup')f.unshift('device.json war nicht lesbar – es läuft die Sicherung.');
-  if(!I.fs)f.unshift('Dateisystem schreibgeschützt (Wartungsmodus) – nichts wird gespeichert.');
+  if(!I.fs&&I.q!=='default')f.unshift('Dateisystem schreibgeschützt (Wartungsmodus) – nichts wird gespeichert.');
   $('hinw').innerHTML=f.length?'<div class="se">'+f.join('<br>')+'</div>':'';
   $('btns').innerHTML=I.bn.map((n,i)=>n?'<div class="lp"><span class="lamp" id="bl'+i+'"></span><span class="nr">'+(i+1)+'</span> '+esc(n)+'</div>':'').join('');
   $('bcount').textContent=I.nb+' Buttons im Report';

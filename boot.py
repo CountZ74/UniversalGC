@@ -47,9 +47,16 @@ if quelle != "device":
 
 # --- Wartungsmodus? ----------------------------------------------------------
 
+# Ohne lesbaren Konfigurationstaster gaebe es keinen Weg zurueck an das
+# Laufwerk - dann bleibt es sichtbar. Das ist vor allem der Fall bei einem
+# frisch bespielten Board ohne device.json: Dort wuerde sonst schon das
+# Kopieren der Dateien abbrechen, sobald boot.py einmal gelaufen ist.
 wartungsmodus = False
+einrichtung = False
 pin = c.get("config_pin")
-if pin:
+if quelle == "default" or not pin:
+    einrichtung = True
+else:
     try:
         taster = digitalio.DigitalInOut(getattr(board, pin))
         taster.direction = digitalio.Direction.INPUT
@@ -58,8 +65,12 @@ if pin:
         taster.deinit()                     # Pin freigeben, code.py braucht ihn
     except Exception as e:
         meldungen.append("Taster %s nicht lesbar: %s" % (pin, e))
+        einrichtung = True
 
-if wartungsmodus:
+if einrichtung:
+    meldungen.append("Einrichtung: kein Konfigurationstaster - CIRCUITPY "
+                     "bleibt sichtbar, das Geraet speichert nichts")
+elif wartungsmodus:
     meldungen.append("Wartungsmodus: CIRCUITPY sichtbar, Speichern aus")
 else:
     # Laufwerk aus. Damit wird CIRCUITPY fuer das Geraet selbst beschreibbar.

@@ -50,21 +50,31 @@ Beim ESP32-S3 beachten:
 
 ## Installation
 
-1. CircuitPython auf das Board spielen (https://circuitpython.org/downloads).
-2. Aus diesem Repo auf `CIRCUITPY` kopieren (alles außer `tests/` und `README.md`):
+1. CircuitPython auf das Board spielen (https://circuitpython.org/downloads): mit
+   gedrückter BOOTSEL-Taste einstecken, die `.uf2` auf das Laufwerk ziehen.
+2. Das Board erscheint als Laufwerk **`CIRCUITPY`**. Im Datei-Explorer dorthin kopieren
+   (Thonny ist dafür nicht nötig):
    ```
-   boot.py code.py cfg.py pins.py eingaben.py achsen.py kalib.py logik.py
-   tele.py rumble.py leds.py ble_hid.py web.py index.html
+   device.json       Kopie der passenden Vorlage aus presets/ – ZUERST
+   cfg.py pins.py eingaben.py achsen.py kalib.py logik.py tele.py
+   rumble.py leds.py ble_hid.py web.py index.html code.py
    presets/          (Ordner)
-   device.json       Kopie der passenden Vorlage aus presets/
    lib/              siehe unten
+   boot.py           ZULETZT
    ```
-3. Neu einstecken. Ab jetzt ist `CIRCUITPY` nicht mehr als Laufwerk sichtbar – das Gerät
-   braucht es selbst zum Speichern (siehe *Wartungsmodus*).
+   Zwischendurch startet CircuitPython nach jeder kopierten Datei neu und meldet
+   eventuell fehlende Module – das ist normal, solange noch nicht alles drauf ist.
+3. Abziehen und neu einstecken. Erst jetzt läuft `boot.py`: das Gerät meldet sich mit
+   seinen Buttons und Achsen, und `CIRCUITPY` ist nicht mehr als Laufwerk sichtbar – das
+   Gerät braucht es selbst zum Speichern. Zurück ans Laufwerk kommt man über den
+   *Wartungsmodus* (Konfigurationstaster beim Einstecken gedrückt halten).
 
-Ohne `device.json` startet das Gerät mit 8 leeren Buttons und schaltet den Access Point
-**von selbst** ein (WLAN `UniversalGC-Setup`, Passwort `universalgc`). Dann im Browser unter
-*Belegung* eine Vorlage laden, anpassen, speichern.
+Fehlt `device.json` oder ist darin kein Konfigurationstaster eingetragen, bleibt
+`CIRCUITPY` sichtbar (Einrichtungsmodus) – sonst gäbe es keinen Weg zurück an die Dateien.
+Das Gerät meldet sich dann mit 8 leeren Buttons, startet den Access Point von selbst
+(WLAN `UniversalGC-Setup`, Passwort `universalgc`) und zeigt im Browser die Vorlagen an.
+Speichern kann es in diesem Zustand nichts: die gewählte Vorlage als `device.json` auf das
+Laufwerk kopieren und neu einstecken.
 
 ### Bibliotheken (`lib/`)
 
