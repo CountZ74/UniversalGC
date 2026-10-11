@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="de"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SimRacing Konfigurator</title><style>
+<title>UniversalGC</title><style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#eee;padding:14px;max-width:560px;margin:0 auto}
 h1{color:#e94560;font-size:1.2rem}
@@ -68,7 +68,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair;border-radius
 .pxv span{width:16px;height:16px;border-radius:50%;background:#0f3460;border:1px solid #24406b}
 </style></head><body>
 
-<h1 id="titel">SimRacing <span class="sub" id="ver"></span></h1>
+<h1 id="titel">UniversalGC <span class="sub" id="ver"></span></h1>
 <div class="sub" id="geraet"></div>
 <div class="tabs" id="tabs">
   <div class="tab on" data-t="s">Status</div>
@@ -227,7 +227,7 @@ async function init(){
   const d=await api('/init');
   if(!d){setTimeout(init,800);return;}
   I=d;K=JSON.parse(JSON.stringify(d.c));
-  $('titel').firstChild.textContent=(d.name||'SimRacing')+' ';
+  $('titel').firstChild.textContent=(d.name||'UniversalGC')+' ';
   $('ver').textContent='v'+d.v;
   $('geraet').textContent=d.board+' · '+d.chip+(d.q!=='device'?' · Konfiguration: '+d.q:'');
   document.querySelector('[data-t=a]').classList.toggle('aus',!d.an.length);

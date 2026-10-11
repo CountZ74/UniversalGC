@@ -1,10 +1,14 @@
-# Universelle SimRacing-Firmware
+# UniversalGC
 
-Eine CircuitPython-Firmware für **Pedale, Buttonbox und Lenkrad** nach dem Vorbild von
-FreeJoy. Was an welchem Pin hängt, steht in `device.json` und wird über die
-Weboberfläche des Geräts eingestellt. Entstanden aus der Pedal-Firmware v9.9 und der
-Buttonbox v2.1 – deren am Aufbau ausgemessene Feinheiten (Wraparound-Kalibrierung,
-Wägezelle über PIO, Rumble im slow-decay-Verfahren, Logikbuttons) sind übernommen.
+Universelle Gamecontroller-Firmware für CircuitPython, nach dem Vorbild von FreeJoy:
+**Pedale, Buttonbox, Lenkrad, Flugsim-Panel, Arcade-Stick** – was an welchem Pin hängt,
+steht in `device.json` und wird über die Weboberfläche des Geräts eingestellt.
+
+Entstanden aus zwei Einzel-Firmwares, die damit abgelöst werden:
+[sim-pedale](https://github.com/CountZ74/sim-pedale) (Pedale v9.9) und die Buttonbox v2.1.
+Deren am Aufbau ausgemessene Feinheiten – Wraparound-Kalibrierung, Wägezelle über PIO,
+Rumble im slow-decay-Verfahren, Logikbuttons – sind übernommen. Verweise wie
+„Pedale v9.4“ in Kommentaren beziehen sich auf die Versionsgeschichte dort.
 
 ## Was geht
 
@@ -22,6 +26,11 @@ Wägezelle über PIO, Rumble im slow-decay-Verfahren, Logikbuttons) sind überno
 | Rumble | DRV8871 mit Totmannschaltung und Not-Aus, Effekte aus SimHub ShakeIt |
 | Bluetooth LE | nur ESP32-S3 (siehe unten) |
 | Sicherheitsnetz | Pins werden vor dem Speichern geprüft, alte Belegung bleibt als Sicherung; startet die neue zweimal nicht, kommt die alte zurück |
+
+## Geplant
+
+Für allgemeine Gamecontroller (siehe Issues): mittenzentrierte Achsen für Joysticks und
+Thumbsticks, Hat-Switch/POV, Shift-Ebene, Ausgabe als Tastatur/Maus.
 
 ## Welcher Chip?
 
@@ -42,7 +51,7 @@ Beim ESP32-S3 beachten:
 ## Installation
 
 1. CircuitPython auf das Board spielen (https://circuitpython.org/downloads).
-2. Auf `CIRCUITPY` kopieren:
+2. Aus diesem Repo auf `CIRCUITPY` kopieren (alles außer `tests/` und `README.md`):
    ```
    boot.py code.py cfg.py pins.py eingaben.py achsen.py kalib.py logik.py
    tele.py rumble.py leds.py ble_hid.py web.py index.html
@@ -54,7 +63,7 @@ Beim ESP32-S3 beachten:
    braucht es selbst zum Speichern (siehe *Wartungsmodus*).
 
 Ohne `device.json` startet das Gerät mit 8 leeren Buttons und schaltet den Access Point
-**von selbst** ein (WLAN `SimRacing-Setup`, Passwort `simracing`). Dann im Browser unter
+**von selbst** ein (WLAN `UniversalGC-Setup`, Passwort `universalgc`). Dann im Browser unter
 *Belegung* eine Vorlage laden, anpassen, speichern.
 
 ### Bibliotheken (`lib/`)
@@ -114,11 +123,12 @@ Die Pins im Lenkrad sind ein Vorschlag – beim Verdrahten an das eigene Board a
 - **Buttonbox:** Buttons 1–11 und Logikbuttons 23–38 liegen wie in v2.1, Gerätetyp bleibt
   *Gamepad*. Logikausdrücke und LED-Logik einmal im Browser neu eintragen.
 
-## SimHub
+## Telemetrie (SimHub & Co.)
 
-Wie bisher: In SimHub ein *Custom Serial Device* auf den **zweiten** COM-Port des Geräts
-(der Datenkanal), Format eine Zeile `name=wert;name=wert` mit `\n` am Ende. Die Namen sind
-frei und gelten überall: in Logikausdrücken, in LED-Regeln, für Rumble und Drehzahlband.
+Das Gerät nimmt über seinen **zweiten** COM-Port (Datenkanal) Zeilen der Form
+`name=wert;name=wert` mit `\n` am Ende an – von SimHub, einem eigenen Skript oder jedem
+anderen Programm. In SimHub dafür ein *Custom Serial Device* auf diesen Port legen. Die
+Namen sind frei und gelten überall: in Logikausdrücken, in LED-Regeln, für Rumble und Drehzahlband.
 
 Für das Drehzahlband am Lenkrad braucht es z. B. `rpm`, `rpmmax` und `pit`. In SimHub als
 NCalc-Formel sinngemäß:
@@ -132,8 +142,8 @@ NCalc-Formel sinngemäß:
 ## Tests auf dem PC
 
 ```
-python3 firmware/tests/test_firmware.py     # Logik, Descriptor, Pins, Kalibrierung …
-python3 firmware/tests/sim.py buttonbox     # ganzes Gerät simuliert, http://localhost:8765
+python3 tests/test_firmware.py     # Logik, Descriptor, Pins, Kalibrierung …
+python3 tests/sim.py buttonbox     # ganzes Gerät simuliert, http://localhost:8765
 ```
 
 Der Simulator ersetzt die CircuitPython-Module durch Nachbauten und das Laufwerk durch

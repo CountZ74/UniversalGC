@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.mpy
+# Laufzeitdateien, die das Geraet selbst anlegt
+boot_out.txt
+calibration.json
+logic.json
+rumble.json
+device.bak.json
+cfg_pending
+fehler.txt

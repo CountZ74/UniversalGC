@@ -1,6 +1,6 @@
 """Tests fuer die universelle Firmware - laufen mit normalem Python auf dem PC.
 
-    python3 firmware/tests/test_firmware.py      (oder pytest)
+    python3 tests/test_firmware.py      (oder pytest)
 
 Getestet wird alles, was ohne Hardware geht: Konfiguration, Descriptor,
 Buttonnummern, Pinpruefung, Kalibrierung, Logik, Encoder-Impulse,

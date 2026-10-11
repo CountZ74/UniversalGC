@@ -41,12 +41,12 @@ class BleHid:
             return False
         try:
             hid = HIDService(hid_descriptor=self.desc)
-            DeviceInfoService(manufacturer=self.c["usb"].get("manufacturer", "SimRacing"),
-                              model_number=self.c.get("name", "SimRacing"))
+            DeviceInfoService(manufacturer=self.c["usb"].get("manufacturer", "UniversalGC"),
+                              model_number=self.c.get("name", "UniversalGC"))
             self.adv = ProvideServicesAdvertisement(hid)
             self.adv.appearance = APPEARANCE.get(self.usage, 0x03C3)
             self.radio = adafruit_ble.BLERadio()
-            name = b.get("name") or self.c.get("name") or "SimRacing"
+            name = b.get("name") or self.c.get("name") or "UniversalGC"
             self.radio.name = name[:20]
             for d in hid.devices:
                 if getattr(d, "usage", None) == self.usage:

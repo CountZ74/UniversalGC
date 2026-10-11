@@ -1,11 +1,13 @@
 """
-Universelle SimRacing-Firmware v1.0 - Pedale, Buttonbox, Lenkrad
-================================================================
+UniversalGC v1.0 - universelle Gamecontroller-Firmware fuer CircuitPython
+=========================================================================
 
-Eine Firmware fuer alle Geraete, nach dem Vorbild von FreeJoy. Was an welchem
-Pin haengt, steht in device.json und laesst sich ueber die Weboberflaeche
-einstellen. Hervorgegangen aus der Pedal-Firmware v9.9 und der Buttonbox v2.1;
-alles, was dort am realen Aufbau ausgemessen wurde, ist uebernommen:
+Eine Firmware fuer jede Art von Gamecontroller, nach dem Vorbild von FreeJoy:
+Pedale, Buttonbox, Lenkrad, Flugsim-Panel, Arcade-Stick. Was an welchem Pin
+haengt, steht in device.json und laesst sich ueber die Weboberflaeche
+einstellen. Hervorgegangen aus der Pedal-Firmware v9.9 (Repo sim-pedale) und
+der Buttonbox v2.1 (Repo buttonbox); alles, was dort am realen Aufbau
+ausgemessen wurde, ist uebernommen:
 
   - Wraparound-Kalibrierung fuer den AS5600 mit Abdeckungskarte (Pedale v9.3)
   - Waegezelle ueber PIO mit gleitendem Mittel (Pedale v9.5 / v9.7)
@@ -641,7 +643,7 @@ class App:
 
     def laufen(self):
         self.status_blinken(3)
-        print("SimRacing-Firmware", VERSION, "-", self.c.get("name"),
+        print("UniversalGC", VERSION, "-", self.c.get("name"),
               "- HID:", "ja" if self.hid else "NEIN", "- BLE:", self.ble.status())
         if self.quelle == "default":
             print("Keine device.json - Access Point startet von selbst")

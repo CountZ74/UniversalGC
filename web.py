@@ -31,7 +31,7 @@ class Web:
         w = self.app.c["wifi"]
         pw = w.get("password") or None
         print("Starte AP", w.get("ssid"), "...")
-        wifi.radio.start_ap(ssid=w.get("ssid", "SimRacing"), password=pw,
+        wifi.radio.start_ap(ssid=w.get("ssid", "UniversalGC"), password=pw,
                             channel=int(w.get("channel", 6)))
         self.pool = socketpool.SocketPool(wifi.radio)
         self.sock = self.pool.socket(self.pool.AF_INET, self.pool.SOCK_STREAM)

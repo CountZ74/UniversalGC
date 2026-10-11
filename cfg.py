@@ -1,6 +1,6 @@
-# cfg.py - Geraetekonfiguration der universellen SimRacing-Firmware
+# cfg.py - Geraetekonfiguration von UniversalGC
 #
-# Ein Geraet - Pedale, Buttonbox, Lenkrad - wird komplett durch device.json
+# Ein Geraet - Pedale, Buttonbox, Lenkrad, Flugsim-Panel, Arcade-Stick - wird komplett durch device.json
 # beschrieben: welche Funktion an welchem Pin haengt, wie das Geraet am USB
 # heisst, welche Buttonnummern es belegt. Vorbild ist FreeJoy, nur dass der
 # Konfigurator hier die Weboberflaeche des Geraets selbst ist.
@@ -42,10 +42,10 @@ BUTTON_MODES = ("normal", "pulse", "toggle")
 # Konfigurationstaster an die Weboberflaeche (siehe code.py).
 def defaults():
     return {
-        "name": "SimRacing Geraet",
-        "usb": {"manufacturer": "SimRacing", "product": "SimRacing Geraet",
+        "name": "UniversalGC",
+        "usb": {"manufacturer": "UniversalGC", "product": "UniversalGC",
                 "pid": -1, "usage": "joystick"},
-        "wifi": {"ssid": "SimRacing-Setup", "password": "simracing",
+        "wifi": {"ssid": "UniversalGC-Setup", "password": "universalgc",
                  "channel": 6, "port": 80},
         "ble": {"enabled": False, "name": ""},
         "config_pin": "",

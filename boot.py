@@ -1,4 +1,4 @@
-# boot.py - universelle SimRacing-Firmware
+# boot.py - UniversalGC, universelle Gamecontroller-Firmware
 #
 # Liest device.json und meldet das Geraet passend dazu am USB an: Name, PID,
 # und einen HID-Descriptor mit genau den Buttons und Achsen, die konfiguriert
@@ -102,8 +102,8 @@ u = c["usb"]
 try:
     import supervisor
     pid = int(u.get("pid", -1))
-    hersteller = str(u.get("manufacturer", "SimRacing"))[:30]
-    produkt = str(u.get("product") or c.get("name") or "SimRacing")[:30]
+    hersteller = str(u.get("manufacturer", "UniversalGC"))[:30]
+    produkt = str(u.get("product") or c.get("name") or "UniversalGC")[:30]
     if pid >= 0:
         supervisor.set_usb_identification(manufacturer=hersteller,
                                           product=produkt, pid=pid)

@@ -1,6 +1,6 @@
 """Simulator: boot.py und code.py auf dem PC laufen lassen.
 
-    python3 firmware/tests/sim.py [preset] [--port 8765]
+    python3 tests/sim.py [preset]        (Port: SIM_PORT, Standard 8765)
 
 Die CircuitPython-Module (board, usb_hid, keypad, analogio, wifi, ...) werden
 durch Nachbauten ersetzt, das Dateisystem von CIRCUITPY durch ein temporaeres
