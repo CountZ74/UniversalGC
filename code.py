@@ -661,7 +661,7 @@ class App:
         except Exception as e:
             print("WLAN-Start fehlgeschlagen:", e)
             self.ble.weiter()
-            if self.quelle == "default":
+            if self.quelle == "default" or self.taster is None:
                 # Im Einrichtungsmodus ist der AP der einzige Zugang -
                 # in 10 Sekunden noch einmal.
                 self.ap_wunsch = True
@@ -686,7 +686,11 @@ class App:
         if self.quelle == "default":
             print("Keine device.json - Access Point startet von selbst")
             self.wlan_umschalten()
-        elif not self.hid and not self.web.aktiv and self.taster is None:
+        elif self.taster is None:
+            # Kein nutzbarer Konfigurationstaster (nicht eingetragen, oder der
+            # Pinname passt nicht zum Board) - dann ist der Access Point der
+            # einzige Weg an die Einstellungen. Also gleich starten.
+            print("Kein Konfigurationstaster - Access Point startet von selbst")
             self.wlan_umschalten()
 
         while True:
