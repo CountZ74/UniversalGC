@@ -52,6 +52,11 @@ Spiel danach neu zuordnen.
 | ESP32 ohne Zusatz, ESP32-C3 | nein | ja | ungeeignet |
 
 Beim ESP32-S3 beachten:
+- Der Web-Installer von circuitpython.org fragt nach dem Heim-WLAN und schreibt es in
+  `settings.toml`. **Diese Zeilen (`CIRCUITPY_WIFI_SSID`, `CIRCUITPY_WIFI_PASSWORD`,
+  `CIRCUITPY_WEB_API_PASSWORD`) auskommentieren** – sonst verbindet sich CircuitPython
+  selbst, belegt mit seinem Web-Editor Port 80, und der Access Point von UniversalGC
+  startet nicht.
 - Analog nur an **GPIO1–10** zuverlässig. GPIO11–20 (ADC2) messen nicht, solange das WLAN
   an ist – die Firmware weist darauf hin.
 - GPIO19/20 sind USB, GPIO26–37 hängen meist am Flash/PSRAM – werden gesperrt.

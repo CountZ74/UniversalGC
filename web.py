@@ -56,7 +56,13 @@ class Web:
                 raise
             self.sock = s
 
-        self._versuche(server, "Webserver")
+        try:
+            self._versuche(server, "Webserver")
+        except Exception:
+            if os.getenv("CIRCUITPY_WIFI_SSID"):
+                print("Port belegt? CircuitPythons Web-Editor laeuft "
+                      "(CIRCUITPY_WIFI_SSID in settings.toml)")
+            raise
         self.aktiv = True
         print("Webserver: http://192.168.4.1")
 

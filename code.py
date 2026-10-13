@@ -240,6 +240,17 @@ class App:
         from web import Web
         self.web = Web(self)
 
+        # Der Web-Installer fuer den ESP32 traegt das Heim-WLAN in
+        # settings.toml ein. CircuitPython verbindet sich dann selbst und
+        # startet seinen Web-Editor auf Port 80 - genau dem Port der
+        # Weboberflaeche. Der Access Point kommt dann nicht hoch.
+        if os.getenv("CIRCUITPY_WIFI_SSID"):
+            self.fehler.append(
+                "settings.toml enthaelt CIRCUITPY_WIFI_SSID: CircuitPython "
+                "verbindet sich selbst mit dem WLAN und belegt Port 80 - der "
+                "Access Point startet dann nicht. Die WLAN-Zeilen in "
+                "settings.toml auskommentieren.")
+
         for f in self.fehler:
             print("Hinweis:", f)
 
