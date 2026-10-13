@@ -63,6 +63,10 @@ Beim ESP32-S3 beachten:
 - **GPIO0 nicht als Konfigurationstaster** nehmen: gedrückt beim Einstecken startet der
   ROM-Bootloader.
 - Keine PIO – eine Wägezelle läuft dort über Bit-Banging (langsamer).
+- Zu wenig USB-Endpunkte für einen zweiten COM-Port: Der ESP32-S3 kann nur 4 IN-Endpunkte
+  gleichzeitig nutzen, Konsole + Datenkanal + Joystick bräuchten 5 (CircuitPython ginge in
+  den abgesicherten Modus). Die Telemetrie läuft dort deshalb über den **einen** COM-Port
+  (die Konsole) – in SimHub diesen Port eintragen.
 
 ## Installation
 
@@ -176,7 +180,8 @@ deshalb auf jedes Board. Welche Namen ein Board hat, zeigt in der Thonny-Shell
 
 ## Telemetrie (SimHub & Co.)
 
-Das Gerät nimmt über seinen **zweiten** COM-Port (Datenkanal) Zeilen der Form
+Das Gerät nimmt über seinen **zweiten** COM-Port (Datenkanal; beim ESP32-S3 über den
+einzigen COM-Port) Zeilen der Form
 `name=wert;name=wert` mit `\n` am Ende an – von SimHub, einem eigenen Skript oder jedem
 anderen Programm. In SimHub dafür ein *Custom Serial Device* auf diesen Port legen. Die
 Namen sind frei und gelten überall: in Logikausdrücken, in LED-Regeln, für Rumble und Drehzahlband.

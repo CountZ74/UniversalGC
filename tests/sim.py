@@ -135,8 +135,12 @@ def reset():
 
 
 mod("microcontroller", pin=mc_pin, reset=reset, nvm=nvm)
-mod("supervisor", set_usb_identification=lambda **kw: print("USB:", kw))
-mod("storage", disable_usb_drive=lambda: None, remount=lambda *a, **k: None)
+USB = {"daten": False, "laufwerk": True, "midi": True, "hid": False}
+mod("supervisor", set_usb_identification=lambda **kw: print("USB:", kw),
+    runtime=types.SimpleNamespace(serial_bytes_available=0))
+mod("storage", disable_usb_drive=lambda: USB.update(laufwerk=False),
+    remount=lambda *a, **k: None)
+mod("usb_midi", disable=lambda: USB.update(midi=False))
 import gc as gc_mod
 gc_mod.mem_free = lambda: 123456
 
@@ -161,8 +165,9 @@ class HidDevice:
 
 
 usb_hid = mod("usb_hid", Device=HidDevice, devices=[])
-usb_hid.enable = lambda devs: setattr(usb_hid, "devices", list(devs))
-mod("usb_cdc", enable=lambda **kw: None, data=None)
+usb_hid.enable = lambda devs: (setattr(usb_hid, "devices", list(devs)),
+                               USB.update(hid=bool(devs)))
+mod("usb_cdc", enable=lambda **kw: USB.update(daten=kw.get("data", False)), data=None)
 
 
 class DigitalInOut:
@@ -380,5 +385,16 @@ print("=== boot.py ===")
 BOOT_LAEUFT[0] = True
 exec(compile(_open(os.path.join(FW, "boot.py")).read(), "boot.py", "exec"), {"__name__": "boot"})
 BOOT_LAEUFT[0] = False
+
+# USB-Endpunkte pruefen wie CircuitPython nach boot.py. Der ESP32-S3 hat nur
+# 4 IN-Endpunkte (Adafruit: "How Many USB Devices Can I Have?"); jede CDC
+# braucht 2, Laufwerk, Joystick und MIDI je 1.
+if sys.platform.lower().startswith("esp"):
+    n_in = 2 + (2 if USB["daten"] else 0) + (1 if USB["laufwerk"] else 0) \
+        + (1 if USB["hid"] else 0) + (1 if USB["midi"] else 0)
+    print("USB-Endpunkte (IN): %d von 4" % n_in)
+    if n_in > 4:
+        print("SICHERHEITSMODUS: USB-Geraete brauchen mehr Endpunkte als verfuegbar")
+        sys.exit(3)
 print("=== code.py ===")
 exec(compile(_open(os.path.join(FW, "code.py")).read(), "code.py", "exec"), {"__name__": "code"})

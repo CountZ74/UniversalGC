@@ -10,6 +10,33 @@
 # einem Nachbau testen.
 
 
+class KonsolenPort:
+    """Telemetrie ueber die Konsole statt ueber einen eigenen COM-Port.
+
+    Fuer den ESP32-S3, der keinen zweiten seriellen Kanal anmelden kann (zu
+    wenig USB-Endpunkte, siehe boot.py). SimHub schickt seine Zeilen dann an
+    den einen COM-Port des Geraets - code.py liest sie hier mit. Was das Geraet
+    selbst ausgibt (print), ignoriert SimHub.
+    """
+
+    def __init__(self):
+        import sys
+        import supervisor
+        self._stdin = sys.stdin
+        self._rt = supervisor.runtime
+
+    @property
+    def in_waiting(self):
+        n = self._rt.serial_bytes_available     # je nach Version bool oder int
+        return 1 if n is True else int(n)
+
+    def read(self, n):
+        out = bytearray()
+        while self._rt.serial_bytes_available and len(out) < 512:
+            out.extend(self._stdin.read(1).encode())
+        return bytes(out)
+
+
 class Telemetrie:
     def __init__(self, port, timeout=2.0):
         self.port = port

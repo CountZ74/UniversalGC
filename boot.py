@@ -172,14 +172,31 @@ except Exception as e:
 # --- Serieller Datenkanal fuer SimHub ----------------------------------------
 #
 # Zuletzt, weil er der einzige Schritt ist, auf den man zur Not verzichten
-# kann. Danach meldet sich das Geraet mit ZWEI COM-Ports: Konsole und Daten.
+# kann. Am Pico meldet sich das Geraet danach mit ZWEI COM-Ports: Konsole und
+# Daten.
+#
+# Der ESP32-S3 hat dafuer nicht genug USB-Endpunkte: nur 4 IN-Endpunkte
+# gleichzeitig, jede serielle Schnittstelle braucht 2, Joystick und Laufwerk
+# je 1 (Adafruit, "Customizing USB Devices in CircuitPython"). Konsole +
+# Datenkanal + Joystick sind schon 5 - CircuitPython geht dann in den
+# abgesicherten Modus. Dort laeuft die Telemetrie deshalb ueber die Konsole
+# (code.py liest sie von dort, siehe tele.py), und MIDI bleibt aus.
+
+try:
+    import usb_midi
+    usb_midi.disable()          # braucht niemand, kostet einen Endpunkt
+except Exception:
+    pass
 
 if c["telemetry"].get("enabled", True):
-    try:
-        import usb_cdc
-        usb_cdc.enable(console=True, data=True)
-    except Exception as e:
-        meldungen.append("Datenkanal nicht moeglich: %s" % e)
+    if pins.chip() == "esp32s3":
+        meldungen.append("Telemetrie ueber die Konsole (ESP32-S3)")
+    else:
+        try:
+            import usb_cdc
+            usb_cdc.enable(console=True, data=True)
+        except Exception as e:
+            meldungen.append("Datenkanal nicht moeglich: %s" % e)
 
 try:
     print("boot.py:", c.get("name"), "(" + quelle + ")")

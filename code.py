@@ -172,6 +172,14 @@ class App:
                 port = usb_cdc.data
             except ImportError:
                 pass
+            if port is None:
+                # Kein eigener Datenkanal (ESP32-S3, siehe boot.py): SimHub
+                # schickt an die Konsole
+                try:
+                    from tele import KonsolenPort
+                    port = KonsolenPort()
+                except Exception as e:
+                    self.fehler.append("Telemetrie nicht moeglich: %s" % e)
         self.tele = Telemetrie(port, c["telemetry"].get("timeout", 2.0))
         self.ctx = Ctx(self)
 
