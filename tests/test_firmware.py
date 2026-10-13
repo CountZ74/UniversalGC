@@ -239,7 +239,9 @@ def test_validate_presets():
         f = cfg.validate(preset(name), p.pin_id, p.analog_ok)
         check("%s: gueltig %s" % (name, f), not f)
     f = cfg.validate(preset("lenkrad"), pico.pin_id, pico.analog_ok)
-    check("lenkrad auf dem Pico: Pins unbekannt", any("gibt es" in x for x in f))
+    # GPIO21 heisst auf dem Pico GP21 und wird gefunden - aber GPIO1/2 sind
+    # dort keine Analogeingaenge
+    check("lenkrad auf dem Pico: Analogpins abgelehnt", any("kein Analogeingang" in x for x in f))
 
 
 def test_validate_fehler():
@@ -269,6 +271,26 @@ def test_validate_fehler():
     f = cfg.validate(c, e.pin_id, e.analog_ok)
     check("ESP32-S3: USB-Pin gesperrt", bool(f))
     check("ESP32-S3: IO12 ist ADC2", e.adc2("IO12") and not e.adc2("IO2"))
+
+
+def test_pin_schreibweisen():
+    import pins as pm
+    check("Schreibweisen IO21", pm.schreibweisen("IO21") == ["IO21", "GPIO21", "GP21"])
+    check("Schreibweisen fremd", pm.schreibweisen("A0") == ["A0"])
+    # YD-ESP32-S3: Pins heissen GPIOx, die Vorlage koennte IOx sagen
+    b, mc = types.SimpleNamespace(), types.SimpleNamespace()
+    for i in list(range(0, 19)) + [21] + list(range(35, 49)):
+        pin = Pin("GPIO%d" % i)
+        setattr(mc, "GPIO%d" % i, pin)
+        setattr(b, "GPIO%d" % i, pin)
+    p = Pins(b, mc, "esp32s3")
+    check("IO21 findet GPIO21", p.objekt("IO21") is b.GPIO21 and p.pin_id("IO21") == "GPIO21")
+    check("IO1 ist analog", p.analog_ok("IO1"))
+    f = cfg.validate(preset("lenkrad"), p.pin_id, p.analog_ok)
+    check("lenkrad auf YD-ESP32-S3 gueltig %s" % f, not f)
+    c = cfg.normalize({"config_pin": "GPIO21", "buttons": [{"pin": "IO4"}, {"pin": "GPIO4"}]})
+    f = cfg.validate(c, p.pin_id, p.analog_ok)
+    check("IO4 und GPIO4 als doppelt erkannt", any("doppelt belegt" in x for x in f))
 
 
 def test_pins_json():

@@ -156,9 +156,15 @@ Grund steht in `fehler.txt` bzw. `boot_out.txt`.
 |---|---|---|---|
 | `pedale.json` | 3 Pedale: AS5600 Gas/Kupplung, Wägezelle Bremse, 2 Rumble-Motoren – wie Pedale v9.9 | Pico W | 0x4712 |
 | `buttonbox.json` | 11 Taster/Schalter, 3 Potis, 16 Logikbuttons ab 23, Anlasser-LED – Buttonnummern wie Buttonbox v2.1 | Pico 2 W | 0x4711 |
-| `lenkrad.json` | 2 Schaltwippen, 4×4-Matrix, 2 Encoder, 2 Kupplungswippen (Hall), 10 WS2812, Bluetooth | ESP32-S3 DevKitC | 0x4713 |
+| `lenkrad.json` | 2 Schaltwippen, 4×4-Matrix, 2 Encoder, 2 Kupplungswippen (Hall), 10 WS2812, Bluetooth | ESP32-S3 (DevKitC-1, YD-ESP32-S3 …) | 0x4713 |
 
 Die Pins im Lenkrad sind ein Vorschlag – beim Verdrahten an das eigene Board anpassen.
+
+**Pinnamen:** Derselbe Chip-Pin heißt je nach Board `IO21` (Espressif DevKitC-1), `GPIO21`
+(YD-ESP32-S3 und viele andere) oder `GP21` (Pico). Die Firmware probiert die anderen
+Schreibweisen von selbst, wenn das Board einen Namen nicht kennt – die Vorlagen passen
+deshalb auf jedes Board. Welche Namen ein Board hat, zeigt in der Thonny-Shell
+`import board; print(dir(board))`.
 
 ### Umstieg von den alten Firmwares
 

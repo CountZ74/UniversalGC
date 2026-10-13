@@ -3,33 +3,33 @@
   "usb": {"manufacturer": "SimRacing", "product": "Lenkrad", "pid": 18195, "usage": "joystick"},
   "wifi": {"ssid": "SimRacing-Lenkrad", "password": "lenkrad123", "channel": 6, "port": 80},
   "ble": {"enabled": true, "name": "SimRacing Lenkrad"},
-  "config_pin": "IO21",
+  "config_pin": "GPIO21",
   "status_led": "",
   "telemetry": {"enabled": true, "timeout": 2.0},
   "options": {"debounce_ms": 10, "pulse_ms": 100, "axis_threshold": 0, "axis_avg": 4},
   "buttons": [
-    {"pin": "IO8", "name": "Schaltwippe rechts", "btn": 1},
-    {"pin": "IO9", "name": "Schaltwippe links", "btn": 2}
+    {"pin": "GPIO8", "name": "Schaltwippe rechts", "btn": 1},
+    {"pin": "GPIO9", "name": "Schaltwippe links", "btn": 2}
   ],
   "matrix": {
-    "rows": ["IO4", "IO5", "IO6", "IO7"],
-    "cols": ["IO15", "IO16", "IO17", "IO18"],
+    "rows": ["GPIO4", "GPIO5", "GPIO6", "GPIO7"],
+    "cols": ["GPIO15", "GPIO16", "GPIO17", "GPIO18"],
     "diodes": "col2row",
     "btn": 3,
     "names": ["DRS", "Pit", "Radio", "Flash", "ABS+", "ABS-", "TC+", "TC-",
               "BB+", "BB-", "Map+", "Map-", "Hoch", "Runter", "Links", "Rechts"]
   },
   "encoders": [
-    {"a": "IO10", "b": "IO11", "name": "Encoder 1", "btn": 19, "divisor": 4, "pulse_ms": 30},
-    {"a": "IO12", "b": "IO13", "name": "Encoder 2", "btn": 21, "divisor": 4, "pulse_ms": 30}
+    {"a": "GPIO10", "b": "GPIO11", "name": "Encoder 1", "btn": 19, "divisor": 4, "pulse_ms": 30},
+    {"a": "GPIO12", "b": "GPIO13", "name": "Encoder 2", "btn": 21, "divisor": 4, "pulse_ms": 30}
   ],
   "axes": [
-    {"type": "pot", "pin": "IO1", "usage": "rx", "name": "Kupplung links", "deadzone": 2, "margin": 2},
-    {"type": "pot", "pin": "IO2", "usage": "ry", "name": "Kupplung rechts", "deadzone": 2, "margin": 2}
+    {"type": "pot", "pin": "GPIO1", "usage": "rx", "name": "Kupplung links", "deadzone": 2, "margin": 2},
+    {"type": "pot", "pin": "GPIO2", "usage": "ry", "name": "Kupplung rechts", "deadzone": 2, "margin": 2}
   ],
   "logic": {"count": 4},
   "pixels": {
-    "pin": "IO14", "count": 10, "brightness": 0.3, "order": "GRB",
+    "pin": "GPIO14", "count": 10, "brightness": 0.3, "order": "GRB",
     "rpm": "rpm", "rpm_max": "rpmmax", "start": 60, "flash": 97,
     "colors": ["#00ff00", "#00ff00", "#ffff00", "#ff0000"], "flash_color": "#0000ff",
     "rules": [

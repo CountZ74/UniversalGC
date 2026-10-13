@@ -64,6 +64,36 @@ def reserviert(chipname, nummer):
     return None
 
 
+# Je nach Board heisst derselbe Chip-Pin IO21 (Espressif DevKitC), GPIO21
+# (YD-ESP32-S3 und andere) oder GP21 (Pico). Kennt das Board einen Namen
+# nicht, werden die anderen Schreibweisen mit derselben Nummer probiert -
+# so passen die Vorlagen auf jedes Board. "D21" bleibt bewusst aussen vor:
+# bei Adafruit-Boards ist D5 eine Beschriftung, nicht GPIO5.
+PRAEFIXE = ("GPIO", "IO", "GP")
+
+
+def schreibweisen(name):
+    """'IO21' -> ['IO21', 'GPIO21', 'GP21'] (der Originalname zuerst)."""
+    name = str(name)
+    out = [name]
+    for p in PRAEFIXE:
+        if name.startswith(p) and name[len(p):].isdigit():
+            nr = name[len(p):]
+            for q in PRAEFIXE:
+                if q + nr not in out:
+                    out.append(q + nr)
+            break
+    return out
+
+
+def board_pin(board_modul, name):
+    """Pin-Objekt zu einem Namen, mit Ausweichen auf andere Schreibweisen."""
+    for n in schreibweisen(name):
+        if hasattr(board_modul, n):
+            return getattr(board_modul, n)
+    raise AttributeError("Pin %s gibt es auf diesem Board nicht" % name)
+
+
 class Pins:
     def __init__(self, board_modul=None, mc_pin_modul=None, chipname=None):
         if board_modul is None:
@@ -98,11 +128,18 @@ class Pins:
             gruppen.setdefault(schluessel, []).append(n)
         self.gruppen = gruppen
 
+    def _info(self, name):
+        for n in schreibweisen(name):
+            i = self.liste.get(n)
+            if i is not None:
+                return i
+        return None
+
     def objekt(self, name):
-        return getattr(self.board, name)
+        return board_pin(self.board, name)
 
     def pin_id(self, name):
-        i = self.liste.get(str(name))
+        i = self._info(name)
         if i is None:
             return None
         if i["res"]:
@@ -110,12 +147,12 @@ class Pins:
         return i["id"]
 
     def analog_ok(self, name):
-        i = self.liste.get(str(name))
+        i = self._info(name)
         return bool(i and i["analog"])
 
     def adc2(self, name):
         """ESP32-S3: Analogpin, der bei aktivem WLAN nicht misst."""
-        i = self.liste.get(str(name))
+        i = self._info(name)
         return bool(self.chip == "esp32s3" and i and i["nr"] and 11 <= i["nr"] <= 20)
 
     def json(self):

@@ -506,6 +506,14 @@ const SIM_USAGES=[['accelerator','Sim: Gas'],['brake','Sim: Bremse'],['clutch','
   ['toebrake','Sim: Fußbremse'],['aileron','Sim: Querruder'],['elevator','Sim: Höhenruder'],
   ['collective','Sim: Kollektiv']];
 const USAGE_OPTS=USAGES.map(u=>[u,u.toUpperCase().replace('SLIDER','Slider').replace('DIAL','Dial').replace('WHEEL','Wheel')]).concat(SIM_USAGES);
+/* Wie pins.py: IO21, GPIO21 und GP21 meinen denselben Chip-Pin. */
+const PRAEF=['GPIO','IO','GP'];
+function pinSuchen(n){
+  let p=I.pins.find(x=>x.n===n||x.alias.includes(n));if(p)return p;
+  const m=/^(GPIO|IO|GP)(\d+)$/.exec(n||'');if(!m)return null;
+  for(const q of PRAEF){p=I.pins.find(x=>x.n===q+m[2]||x.alias.includes(q+m[2]));if(p)return p;}
+  return null;
+}
 function pinOpts(sel,analog){
   let h='<option value="">–</option>',da=false;
   for(const p of I.pins){
@@ -513,7 +521,7 @@ function pinOpts(sel,analog){
     const lbl=p.n+(p.alias.length?' ('+p.alias.join(', ')+')':'')+(p.a?' · analog':'')+(p.r?' · '+p.r:'');
     h+='<option value="'+esc(p.n)+'"'+(p.n===sel?' selected':'')+(p.r||(analog&&!p.a)?' disabled':'')+'>'+esc(lbl)+'</option>';
   }
-  if(sel&&!da){const al=I.pins.find(p=>p.alias.includes(sel));
+  if(sel&&!da){const al=pinSuchen(sel);
     h+='<option value="'+esc(sel)+'" selected>'+esc(sel)+(al?' (= '+al.n+')':' (gibt es hier nicht)')+'</option>';}
   return h;
 }
@@ -624,7 +632,7 @@ function feld(ev){
   if(/\.type$/.test(p)||e.classList.contains('neu'))bauForm();else markiereDoppelte();
 }
 function markiereDoppelte(){
-  const id=n=>{const p=I.pins.find(x=>x.n===n||x.alias.includes(n));return p?p.n:n;};
+  const id=n=>{const p=pinSuchen(n);return p?p.n:n;};
   const z={};const sels=[...$('cfgform').querySelectorAll('select.pin')];
   sels.forEach(s=>{if(s.value)z[id(s.value)]=(z[id(s.value)]||0)+1;});
   sels.forEach(s=>s.classList.toggle('dup',!!s.value&&z[id(s.value)]>1));

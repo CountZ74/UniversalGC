@@ -36,6 +36,7 @@ import os
 try:
     import cfg
     import merker
+    import pins
 except ImportError as e:
     # Noch nicht alles kopiert. boot.py endet hier, das Laufwerk bleibt an.
     print("boot.py: Installation unvollstaendig -", e)
@@ -104,7 +105,7 @@ elif quelle == "default" or not pin:
     einrichtung = True
 else:
     try:
-        taster = digitalio.DigitalInOut(getattr(board, pin))
+        taster = digitalio.DigitalInOut(pins.board_pin(board, pin))
         taster.direction = digitalio.Direction.INPUT
         taster.pull = digitalio.Pull.UP
         wartungsmodus = not taster.value    # gegen GND: gedrueckt = False
