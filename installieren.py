@@ -13,7 +13,8 @@ gemeint ist (mit Belegung, Board und CircuitPython-Version).
 
 Boards im Normalbetrieb (Laufwerk aus) schickt das Skript selbst ueber die
 serielle Konsole in den Wartungsmodus und wartet auf ihr Laufwerk - dafuer
-einmal "pip install pyserial". Thonny dabei schliessen, es belegt den Port.
+einmal pyserial installieren (Arch: sudo pacman -S python-pyserial). Thonny
+dabei schliessen, es belegt den Port.
 
 Optionen:
     --ziel PFAD          Laufwerk CIRCUITPY (sonst automatisch gesucht)
@@ -269,8 +270,9 @@ def ueber_konsole():
     print("Suche Boards ueber die serielle Konsole ...")
     boards = seriell_suchen()
     if boards is None:
-        print("  pyserial fehlt ('pip install pyserial') - Wartungsmodus bitte "
-              "von Hand.")
+        print("  pyserial fehlt (Arch: 'sudo pacman -S python-pyserial', Debian/"
+              "Ubuntu: 'sudo apt install python3-serial', sonst 'pip install "
+              "pyserial') - Wartungsmodus bitte von Hand.")
         return None
     if not boards:
         print("  Kein Board mit UniversalGC gefunden (Thonny geschlossen? Board "

@@ -87,12 +87,24 @@ Beim ESP32-S3 beachten:
 4. Laufwerk **auswerfen**, abziehen, neu einstecken.
 
 **Update eines Boards im Normalbetrieb** (Laufwerk aus): einfach `python3 installieren.py`.
-Ist `pyserial` installiert (`pip install pyserial`), sucht das Skript das Board über seinen
+Ist `pyserial` installiert, sucht das Skript das Board über seinen
 COM-Port, schickt es in den Wartungsmodus, wartet auf `CIRCUITPY` und installiert. Thonny
 dabei schließen – es belegt den Port. Bei mehreren Boards fragt das Skript nach; mit
 `--seriell` geht das auch, wenn schon ein anderes Laufwerk sichtbar ist. Ohne `pyserial`
 oder bei alter Firmware: Wartungsmodus von Hand (Konfigurationstaster beim Einstecken
 halten oder Weboberfläche → „Neustart mit Laufwerk“).
+
+`pyserial` und `circup` installieren:
+
+| System | pyserial | circup |
+|---|---|---|
+| Arch / Manjaro | `sudo pacman -S python-pyserial` | `pipx install circup` |
+| Debian / Ubuntu | `sudo apt install python3-serial` | `pipx install circup` |
+| Windows / macOS | `pip install pyserial` | `pip install circup` |
+
+Unter Linux muss der Benutzer die seriellen Ports benutzen dürfen: Gruppe `uucp`
+(Arch) bzw. `dialout` (Debian/Ubuntu), z. B. `sudo usermod -aG uucp $USER`, danach neu
+anmelden.
 
 Ohne Python geht es auch von Hand: den Inhalt des Pakets auf `CIRCUITPY` kopieren,
 `boot.py` zuletzt, auswerfen. Alte `.py`-Module der Firmware im Hauptverzeichnis vorher
