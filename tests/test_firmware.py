@@ -493,6 +493,87 @@ def test_installieren():
     check("Installation: alte .mpy werden entfernt", "lib/cfg.mpy" in weg)
 
 
+class FakeRepl:
+    """Verhaelt sich wie die Konsole von CircuitPython: laufendes code.py,
+    Strg+C, 'Press any key', REPL mit Echo."""
+
+    def __init__(self, name="Lenkrad", merker=True):
+        self.puffer = b""
+        self.zustand = "laeuft"
+        self.name = name
+        self.merker = merker
+        self.zeile = b""
+        self.wartung = False
+        self.neu_geladen = False
+
+    @property
+    def in_waiting(self):
+        return len(self.puffer)
+
+    def read(self, n):
+        d, self.puffer = self.puffer[:n], self.puffer[n:]
+        return d
+
+    def write(self, d):
+        for ch in d:
+            c = bytes([ch])
+            if c == b"\x03":
+                if self.zustand == "laeuft":
+                    self.puffer += (b"Traceback...\r\nKeyboardInterrupt:\r\n\r\nCode done running.\r\n"
+                                    b"Press any key to enter the REPL. Use CTRL-D to reload.\r\n")
+                    self.zustand = "warten"
+            elif c == b"\x04":
+                self.neu_geladen = True
+                self.zustand = "laeuft"
+            elif self.zustand == "warten":
+                self.puffer += b"\r\nAdafruit CircuitPython 10.3.1\r\n>>> "
+                self.zustand = "repl"
+            elif self.zustand == "repl":
+                if c == b"\r":
+                    self.puffer += self.zeile + b"\r\n" + self._ausfuehren(self.zeile.decode()) + b">>> "
+                    self.zeile = b""
+                else:
+                    self.zeile += c
+
+    def _ausfuehren(self, cmd):
+        import installieren as inst
+        if cmd == inst.ABFRAGE:
+            return ("UGC:%s\r\n" % self.name).encode() if self.name else b"UGC:-\r\n"
+        if cmd == inst.WARTUNG:
+            if not self.merker:
+                return b"ImportError: no module named 'merker'\r\n"
+            self.wartung = True
+            return b""
+        return b""
+
+
+def test_konsole():
+    import installieren as inst
+    f = FakeRepl("Lenkrad")
+    k = inst.Konsole(f, warte=lambda s: None)
+    k.lesen = lambda dauer, k=k: k.s.read(k.s.in_waiting).decode()
+    check("Konsole: Name der Belegung", k.name() == "Lenkrad")
+    k.weiterlaufen()
+    check("Konsole: danach weiterlaufen (Strg+D)", f.neu_geladen and f.zustand == "laeuft")
+    f2 = FakeRepl(None)
+    k2 = inst.Konsole(f2, warte=lambda s: None)
+    k2.lesen = lambda dauer, k=k2: k.s.read(k.s.in_waiting).decode()
+    check("Konsole: keine UniversalGC erkannt", k2.name() is None)
+    f3 = FakeRepl("Alt", merker=False)
+    k3 = inst.Konsole(f3, warte=lambda s: None)
+    k3.lesen = lambda dauer, k=k3: k.s.read(k.s.in_waiting).decode()
+    k3.zur_repl()
+    check("Konsole: alte Firmware ohne merker meldet Fehler", "Error" in k3.befehl(inst.WARTUNG))
+    f4 = FakeRepl("Neu")
+    k4 = inst.Konsole(f4, warte=lambda s: None)
+    k4.lesen = lambda dauer, k=k4: k.s.read(k.s.in_waiting).decode()
+    k4.zur_repl()
+    k4.befehl(inst.WARTUNG)
+    check("Konsole: Wartungsmodus ausgeloest", f4.wartung)
+    check("Konsole: Echo der Abfrage ist kein Treffer",
+          "UGC:" in inst.ABFRAGE and not inst.ABFRAGE.startswith("UGC:"))
+
+
 def _pflicht_aus_boot():
     import re
     s = open(os.path.join(FW, "boot.py")).read()

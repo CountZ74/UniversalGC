@@ -11,9 +11,15 @@
 Sind mehrere Boards im Wartungsmodus angeschlossen, fragt das Skript, welches
 gemeint ist (mit Belegung, Board und CircuitPython-Version).
 
+Boards im Normalbetrieb (Laufwerk aus) schickt das Skript selbst ueber die
+serielle Konsole in den Wartungsmodus und wartet auf ihr Laufwerk - dafuer
+einmal "pip install pyserial". Thonny dabei schliessen, es belegt den Port.
+
 Optionen:
     --ziel PFAD          Laufwerk CIRCUITPY (sonst automatisch gesucht)
     --ueberschreiben     vorhandene device.json durch die Vorlage ersetzen
+    --seriell            Board ueber die Konsole in den Wartungsmodus schicken,
+                         auch wenn schon ein anderes Laufwerk sichtbar ist
 
 Laeuft mit Python 3 auf Linux, macOS und Windows, ohne Zusatzpakete. Das
 Skript arbeitet sowohl im Quelltext-Repo (Module als .py) als auch in einem
@@ -141,6 +147,162 @@ def plan(quelle, art):
     return kopieren, loeschen
 
 
+# --- Boards ohne Laufwerk ueber die serielle Konsole -----------------------
+#
+# Im Normalbetrieb hat UniversalGC das Laufwerk aus. Ueber die Konsole (den
+# COM-Port) laesst es sich aber bitten, einmal mit Laufwerk neu zu starten -
+# genau das, was "import merker; merker.wartung()" in der Thonny-Shell tut.
+# Braucht pyserial (pip install pyserial); ohne geht es wie bisher von Hand.
+
+STRG_C, STRG_D = b"\x03", b"\x04"
+KENNUNG = "UGC:"
+
+# Einzeiler fuer die REPL: Name der Belegung oder '-' (keine UniversalGC)
+ABFRAGE = ("exec(\"try:\\n import cfg\\n print('%s'+str(cfg.load(leise=True)[0]"
+           ".get('name')))\\nexcept Exception:\\n print('%s-')\")" % (KENNUNG, KENNUNG))
+WARTUNG = "import merker;merker.wartung()"
+
+
+class Konsole:
+    """Die REPL von CircuitPython ueber ein serial-aehnliches Objekt."""
+
+    def __init__(self, s, warte=None):
+        self.s = s
+        import time
+        self.sleep = warte or time.sleep
+
+    def lesen(self, dauer):
+        import time
+        ende = time.monotonic() + dauer
+        out = b""
+        while time.monotonic() < ende:
+            n = self.s.in_waiting
+            if n:
+                out += self.s.read(n)
+            else:
+                self.sleep(0.05)
+        return out.decode("utf-8", "replace")
+
+    def zur_repl(self):
+        """Laufendes code.py anhalten und in die REPL wechseln. True bei Erfolg."""
+        self.s.write(STRG_C)
+        self.sleep(0.3)
+        self.s.write(STRG_C)
+        self.sleep(0.3)
+        self.s.write(b"\r")              # "Press any key to enter the REPL"
+        return ">>>" in self.lesen(1.5)
+
+    def befehl(self, text, dauer=2.0):
+        self.s.write(text.encode() + b"\r")
+        return self.lesen(dauer)
+
+    def name(self):
+        """Name der Belegung, '' bei UniversalGC ohne Namen, None wenn das
+        Geraet nicht antwortet oder keine UniversalGC ist."""
+        if not self.zur_repl():
+            return None
+        antwort = self.befehl(ABFRAGE)
+        for zeile in antwort.splitlines():
+            zeile = zeile.strip()
+            if zeile.startswith(KENNUNG) and "+str(" not in zeile:
+                rest = zeile[len(KENNUNG):]
+                return None if rest == "-" else rest
+        return None
+
+    def weiterlaufen(self):
+        """code.py wieder starten (Soft-Reload)."""
+        self.s.write(STRG_D)
+
+
+def seriell_suchen():
+    """Liste (port, name) aller Boards mit UniversalGC an seriellen Ports.
+    Angehaltene Boards werden wieder gestartet. Ohne pyserial: None."""
+    try:
+        import serial
+        from serial.tools import list_ports
+    except ImportError:
+        return None
+    gefunden = []
+    for p in list_ports.comports():
+        # CircuitPython-Boards: Adafruit-, Raspberry-Pi- oder Espressif-VID
+        if p.vid not in (0x239A, 0x2E8A, 0x303A):
+            continue
+        try:
+            with serial.Serial(p.device, 115200, timeout=0.2) as s:
+                k = Konsole(s)
+                n = k.name()
+                if n is not None:
+                    gefunden.append((p.device, n or "ohne Namen"))
+                k.weiterlaufen()
+        except Exception:
+            continue          # belegt (Thonny offen?) oder kein REPL-Port
+    return gefunden
+
+
+def wartung_ausloesen(port):
+    import serial
+    with serial.Serial(port, 115200, timeout=0.2) as s:
+        k = Konsole(s)
+        if not k.zur_repl():
+            return "Board antwortet nicht"
+        antwort = k.befehl(WARTUNG, 1.0)
+        if "Error" in antwort:
+            return antwort.strip().splitlines()[-1]
+    return None
+
+
+def auf_laufwerk_warten(vorher, sekunden=30):
+    import time
+    ende = time.monotonic() + sekunden
+    while time.monotonic() < ende:
+        neu = [g for g in laufwerk_suchen() if g not in vorher]
+        if neu:
+            time.sleep(1.0)        # Einhaengen abwarten
+            return neu[0]
+        time.sleep(0.5)
+    return None
+
+
+def ueber_konsole():
+    """Board ueber die serielle Konsole in den Wartungsmodus schicken und auf
+    sein Laufwerk warten. Rueckgabe: Pfad oder None."""
+    print("Suche Boards ueber die serielle Konsole ...")
+    boards = seriell_suchen()
+    if boards is None:
+        print("  pyserial fehlt ('pip install pyserial') - Wartungsmodus bitte "
+              "von Hand.")
+        return None
+    if not boards:
+        print("  Kein Board mit UniversalGC gefunden (Thonny geschlossen? Board "
+              "eingesteckt?).")
+        return None
+    if len(boards) == 1:
+        port, name = boards[0]
+    else:
+        print("Mehrere Boards gefunden:")
+        for i, (p, n) in enumerate(boards, 1):
+            print("  %d) %s  (%s)" % (i, n, p))
+        if not sys.stdin.isatty():
+            return None
+        wahl = input("Welches? Nummer eingeben (leer = Abbruch): ").strip()
+        if not (wahl.isdigit() and 1 <= int(wahl) <= len(boards)):
+            return None
+        port, name = boards[int(wahl) - 1]
+    print("Starte '%s' (%s) mit Laufwerk neu ..." % (name, port))
+    vorher = laufwerk_suchen()
+    fehler = wartung_ausloesen(port)
+    if fehler:
+        print("  Geht nicht:", fehler)
+        print("  (Aeltere Firmware ohne merker.py? Dann Konfigurationstaster beim "
+              "Einstecken halten.)")
+        return None
+    ziel = auf_laufwerk_warten(vorher)
+    if ziel is None:
+        print("  CIRCUITPY ist nicht erschienen. Wird das Laufwerk automatisch "
+              "eingehaengt? Sonst einhaengen und mit --ziel erneut starten.")
+    return ziel
+
+
 # --- Laufwerk finden --------------------------------------------------------
 
 def laufwerk_suchen():
@@ -262,6 +424,9 @@ def main(argv=None):
     ap.add_argument("--trocken", action="store_true",
                     help="nur anzeigen, nichts schreiben")
     ap.add_argument("--liste", action="store_true", help="Vorlagen anzeigen")
+    ap.add_argument("--seriell", action="store_true",
+                    help="Board ueber die Konsole in den Wartungsmodus schicken, "
+                         "auch wenn schon ein Laufwerk sichtbar ist")
     a = ap.parse_args(argv)
 
     art = paket_art(HIER)
@@ -282,7 +447,11 @@ def main(argv=None):
     if a.ziel:
         ziel = a.ziel
     else:
-        gefunden = laufwerk_suchen()
+        gefunden = [] if a.seriell else laufwerk_suchen()
+        if not gefunden and not a.trocken:
+            z = ueber_konsole()
+            if z:
+                gefunden = [z]
         if not gefunden:
             print("Kein Laufwerk CIRCUITPY gefunden.\n"
                   "  - Frisches Board: ist CircuitPython drauf und das Laufwerk eingehaengt?\n"
