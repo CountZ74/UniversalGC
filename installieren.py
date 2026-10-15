@@ -8,6 +8,9 @@
     python3 installieren.py --liste          Vorlagen anzeigen
     python3 installieren.py --trocken        nur zeigen, was passieren wuerde
 
+Sind mehrere Boards im Wartungsmodus angeschlossen, fragt das Skript, welches
+gemeint ist (mit Belegung, Board und CircuitPython-Version).
+
 Optionen:
     --ziel PFAD          Laufwerk CIRCUITPY (sonst automatisch gesucht)
     --ueberschreiben     vorhandene device.json durch die Vorlage ersetzen
@@ -177,6 +180,42 @@ def laufwerk_suchen():
             or os.path.exists(os.path.join(k, "lib"))]
 
 
+def beschreibung(pfad):
+    """'Lenkrad - yd_esp32_s3_n16r8, CircuitPython 10.3.1' fuer die Auswahl."""
+    name = board = version = None
+    try:
+        with open(os.path.join(pfad, "device.json")) as f:
+            name = json.load(f).get("name")
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        with open(os.path.join(pfad, "boot_out.txt"), errors="replace") as f:
+            version, board, _ = boot_out_lesen(f.read())
+    except OSError:
+        pass
+    return "%s - %s, CircuitPython %s" % (name or "ohne device.json",
+                                          board or "?", version or "?")
+
+
+def auswaehlen(gefunden):
+    """Bei mehreren Laufwerken nachfragen. Ohne Terminal: Abbruch mit Liste."""
+    print("Mehrere CIRCUITPY-Laufwerke gefunden:")
+    for i, g in enumerate(gefunden, 1):
+        print("  %d) %s\n     %s" % (i, g, beschreibung(g)))
+    if not sys.stdin.isatty():
+        print("Bitte mit --ziel PFAD waehlen.")
+        return None
+    while True:
+        try:
+            wahl = input("Welches? Nummer eingeben (leer = Abbruch): ").strip()
+        except EOFError:
+            return None
+        if not wahl:
+            return None
+        if wahl.isdigit() and 1 <= int(wahl) <= len(gefunden):
+            return gefunden[int(wahl) - 1]
+
+
 # --- Schreiben --------------------------------------------------------------
 
 def durchschreiben(quelle, ziel):
@@ -252,11 +291,11 @@ def main(argv=None):
                   "  - Oder den Pfad angeben: --ziel /media/NAME/CIRCUITPY")
             return 1
         if len(gefunden) > 1:
-            print("Mehrere CIRCUITPY-Laufwerke gefunden, bitte mit --ziel waehlen:")
-            for g in gefunden:
-                print("   ", g)
-            return 1
-        ziel = gefunden[0]
+            ziel = auswaehlen(gefunden)
+            if ziel is None:
+                return 1
+        else:
+            ziel = gefunden[0]
     if not os.path.isdir(ziel):
         print("%s ist kein Verzeichnis." % ziel)
         return 1
