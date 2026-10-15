@@ -78,15 +78,17 @@ def erkennen(dateien):
 
 # --- Belegung ---------------------------------------------------------------
 
-def _usb(b, produkt, achsen_vorgabe):
+def _usb(b, produkt, achsen_vorgabe, pid, usage):
+    # Ohne alte boot.py (z. B. vorher geloescht) gelten die Werte der alten
+    # Firmware - sonst bekaeme das Geraet eine andere USB-Kennung.
     usb = {"manufacturer": "SimRacing", "product": b.get("product", produkt),
-           "pid": b.get("pid", -1), "usage": b.get("usage", "joystick")}
+           "pid": b.get("pid", pid), "usage": b.get("usage", usage)}
     achsen = b.get("achsen") or achsen_vorgabe
     return usb, achsen
 
 
 def device_pedale(s, b):
-    usb, hid = _usb(b, "Pedale", ["rx", "ry", "rz"])
+    usb, hid = _usb(b, "Pedale", ["rx", "ry", "rz"], 0x4712, "joystick")
     pins = list(s.get("ADC_PINS", ["GP26", "GP27", "GP28"]))
     namen = list(s.get("ACHS_NAMEN", ["Gas", "Bremse", "Kupplung"]))
     dz = s.get("DEADZONE_PCT", 1.5)
@@ -140,9 +142,7 @@ def device_pedale(s, b):
 
 
 def device_buttonbox(s, b):
-    usb, hid = _usb(b, "Buttonbox", ["rx", "ry", "rz"])
-    if not b.get("usage"):
-        usb["usage"] = "gamepad"          # Buttonbox v2 war ein Gamepad
+    usb, hid = _usb(b, "Buttonbox", ["rx", "ry", "rz"], 0x4711, "gamepad")
     pins = list(s.get("INPUT_PINS", []))
     namen = list(s.get("INPUT_NAMEN", []))
     apins = list(s.get("ACHS_PINS", []))

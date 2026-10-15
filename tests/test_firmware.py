@@ -685,6 +685,9 @@ def test_uebernahme_pedale():
     c2 = uebernahme.plan(d2)[1]["device.json"]
     check("Uebernahme Pedale v9.9: Joystick Rx/Ry/Rz",
           c2["usb"]["usage"] == "joystick" and [a["usage"] for a in c2["axes"]] == ["rx", "ry", "rz"])
+    c3 = uebernahme.plan(_alt("pedale", "settings.py"))[1]["device.json"]
+    check("Uebernahme Pedale ohne boot.py: PID 0x4712, Joystick",
+          c3["usb"]["pid"] == 0x4712 and c3["usb"]["usage"] == "joystick")
 
 
 def test_uebernahme_buttonbox():
@@ -707,6 +710,9 @@ def test_uebernahme_buttonbox():
     check("Uebernahme Buttonbox: unterdrueckte Inputs", lg["suppress"] == [4, 10])
     check("Uebernahme Buttonbox: LED-Logik", lg["leds"][0] == {"on": "motor", "blink": "AND(b9,b10)"})
     check("Uebernahme Buttonbox: Kalibrierung", neu["calibration.json"][1] == {"typ": "pot", "start": 48, "span": 65487})
+    c3 = uebernahme.plan(_alt("buttonbox", "settings.py", "logic_bb.json"))[1]["device.json"]
+    check("Uebernahme Buttonbox ohne boot.py: PID 0x4711, Gamepad",
+          c3["usb"]["pid"] == 0x4711 and c3["usb"]["usage"] == "gamepad")
     check("Uebernahme: keine alte Firmware", uebernahme.plan({"boot.py": "x"})[0] is None)
 
 
