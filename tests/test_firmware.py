@@ -607,6 +607,29 @@ def _pflicht_aus_boot():
     return re.findall(r'"(\w+)"', m.group(1))
 
 
+def test_merker_schont_flash():
+    import merker
+
+    class Nvm(bytearray):
+        schreib = 0
+
+        def __setitem__(self, i, v):
+            Nvm.schreib += 1
+            bytearray.__setitem__(self, i, v)
+
+    nvm = Nvm(b"\xff" * 16)
+    sys.modules["microcontroller"] = types.SimpleNamespace(nvm=nvm)
+    try:
+        merker.setzen(merker.FEHLSTARTS, 0)
+        check("NVM: frischer Flash (0xFF) wird fuer 0 nicht beschrieben", Nvm.schreib == 0)
+        merker.setzen(merker.FEHLSTARTS, 2)
+        merker.setzen(merker.FEHLSTARTS, 2)
+        check("NVM: gleicher Wert wird nicht erneut geschrieben", Nvm.schreib == 1)
+        check("NVM: Wert gelesen", merker.lesen(merker.FEHLSTARTS) == 2)
+    finally:
+        del sys.modules["microcontroller"]
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])

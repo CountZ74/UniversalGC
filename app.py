@@ -120,6 +120,9 @@ class App:
         self.pins = Pins(board)
         self.fehler = []
         self.neustart_bei = None
+        # NVM-Schreibvorgaenge, die bis zum Neustart warten: sie sollen nicht
+        # bei laufendem WLAN passieren (der Pico W haelt dafuer den Chip an)
+        self.nvm_beim_neustart = {}
         self.start_zeit = time.monotonic()
         self.schreibbar = self._schreibtest()
 
@@ -582,7 +585,7 @@ class App:
                 json.dump(neu, f)
             with open(cfg.PENDING_FILE, "w") as f:
                 f.write("0")
-            merker.setzen(merker.FEHLSTARTS, 0)
+            self.nvm_beim_neustart[merker.FEHLSTARTS] = 0
         except OSError as e:
             return {"ok": False, "f": ["Speichern fehlgeschlagen: %s" % e]}
         self.neustart_bei = time.monotonic() + 1.0
@@ -590,16 +593,22 @@ class App:
         return r
 
     def wartung_anfordern(self):
-        """Beim naechsten Start bleibt CIRCUITPY sichtbar (einmalig)."""
-        return merker.setzen(merker.WARTUNG, merker.W_MAGIC)
+        """Beim naechsten Start bleibt CIRCUITPY sichtbar (einmalig).
+        Geschrieben wird erst direkt vor dem Neustart, nach dem WLAN."""
+        if not merker.verfuegbar():
+            return False
+        self.nvm_beim_neustart[merker.WARTUNG] = merker.W_MAGIC
+        return True
 
     def bestaetigen(self, now):
         """Neue Belegung laeuft sauber - Rueckfall-Markierung loeschen."""
         if self.start_zeit is None or now - self.start_zeit < BESTAETIGT_NACH:
             return
+        if self.web.aktiv:
+            return          # erst wenn das WLAN aus ist - kein Flash-Schreiben dabei
         self.start_zeit = None
-        merker.setzen(merker.FEHLSTARTS, 0)
         if existiert(cfg.PENDING_FILE):
+            merker.setzen(merker.FEHLSTARTS, 0)
             try:
                 os.remove(cfg.PENDING_FILE)
                 print("Neue Belegung bestaetigt")
@@ -732,6 +741,11 @@ class App:
                     self.rumble.not_aus()
                     self.rumble.step()
                 self.leds.aus()
+                if self.nvm_beim_neustart:
+                    if self.web.aktiv:
+                        self.web.beenden()      # erst WLAN aus, dann Flash
+                    for i, v in self.nvm_beim_neustart.items():
+                        merker.setzen(i, v)
                 microcontroller.reset()
 
             self.bestaetigen(now)

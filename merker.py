@@ -41,11 +41,16 @@ def lesen(i):
 
 
 def setzen(i, v):
+    """Schreibt nur, wenn sich der Wert wirklich aendert - jeder Schreibvorgang
+    loescht und beschreibt einen Flash-Sektor. Geloeschter Flash (0xFF) gilt
+    als 0, wird also beim Setzen auf 0 nicht angefasst."""
     n = _nvm()
     if n is None:
         return False
-    if n[i] != v:                      # Flash schonen: nur bei Aenderung
-        n[i] = v
+    alt = n[i]
+    if alt == v or (v == 0 and alt == 0xFF):
+        return True
+    n[i] = v
     return True
 
 
