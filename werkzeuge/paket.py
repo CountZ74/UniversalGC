@@ -108,7 +108,8 @@ def main():
             raise SystemExit("mpy-cross %s.py:\n%s%s" % (m, r.stdout, r.stderr))
     print("  %d Module kompiliert" % len(MODULE))
 
-    for n in ("boot.py", "code.py", "index.html", "installieren.py", "LICENSE"):
+    for n in ("boot.py", "code.py", "index.html", "installieren.py",
+              "uebernahme.py", "LICENSE"):
         shutil.copy(os.path.join(REPO, n), ordner)
     shutil.copytree(os.path.join(REPO, "presets"), os.path.join(ordner, "presets"))
     with open(os.path.join(ordner, "VERSION"), "w") as f:

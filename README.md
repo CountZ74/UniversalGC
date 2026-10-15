@@ -219,11 +219,25 @@ deshalb auf jedes Board. Welche Namen ein Board hat, zeigt in der Thonny-Shell
 
 ### Umstieg von den alten Firmwares
 
-- **Pedale:** Achsen und Gerätetyp (Joystick, Rx/Ry/Rz, keine Buttons) sind wie in v9.9.
-  Die Kalibrierung muss einmal neu gemacht werden (neues Dateiformat). Rumble-Werte im
-  Tab *Rumble* neu eintragen.
-- **Buttonbox:** Buttons 1–11 und Logikbuttons 23–38 liegen wie in v2.1, Gerätetyp bleibt
-  *Gamepad*. Logikausdrücke und LED-Logik einmal im Browser neu eintragen.
+`installieren.py` erkennt die alte Pedal-Firmware (v9) und die Buttonbox (v2) und
+übernimmt sie:
+
+1. Wartungsmodus von Hand – die alten Firmwares können das noch nicht über die Konsole:
+   Taster beim Einstecken halten (Pedale **GP3**, Buttonbox **GP15**).
+2. `python3 installieren.py` – eine Vorlage braucht es nicht.
+
+Übernommen wird:
+- **Belegung** aus der alten `settings.py`: Pins, WLAN-Name und -Passwort, Rumble-Pins,
+  -Namen und SimHub-Namen, Totzone, Filter …
+- **USB-PID, Gerätetyp und HID-Achsen** aus der alten `boot.py` – die Achsen heißen im
+  Spiel wie bisher (v9.7: Gamepad X/Y/Z, v9.9: Joystick Rx/Ry/Rz, Buttonbox: Gamepad
+  Rx/Ry/Rz, Buttons 1–11, Logik ab 23).
+- **Kalibrierung** der Pedale (auch Kennlinien) und der Buttonbox-Achsen, **Logikbuttons,
+  unterdrückte Inputs und LED-Logik** der Buttonbox. `rumble.json` bleibt, wie es ist.
+- Die alten Dateien landen in **`alt/`** auf dem Board. Zurück zur alten Firmware: deren
+  Dateien aus `alt/` wieder ins Hauptverzeichnis kopieren und die neuen löschen.
+
+Mit `--keine-uebernahme` nimmt das Skript stattdessen die angegebene Vorlage.
 
 ## Telemetrie (SimHub & Co.)
 

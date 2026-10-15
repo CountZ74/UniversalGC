@@ -618,6 +618,69 @@ def test_bundle_eintraege():
         check("Bundle: fehlende Bibliothek leer", inst.bundle_eintraege(z, "adafruit_pioasm") == [])
 
 
+def _alt(art, *namen):
+    d = {}
+    for n in namen:
+        with open(os.path.join(HIER, "alt", art, n)) as f:
+            d[n] = f.read()
+    return d
+
+
+def test_uebernahme_pedale():
+    import uebernahme
+    pico = pins_fuer("rp2040")
+    d = _alt("pedale", "settings.py", "boot.py")
+    # Kalibrierung, wie Pedale v9 sie schreibt (Weg schon um 2 % gekuerzt)
+    d["calibration.json"] = json.dumps([
+        {"typ": "adc", "start": 64000, "span": 2940, "curve": [[0, 0], [100, 100]]},
+        {"typ": "hx711", "start": 0, "span": 49000, "curve": [[0, 0], [50, 30], [100, 100]]},
+        {"min": 1000, "max": 4000, "invert": True}])
+    art, neu, hinweise = uebernahme.plan(d)
+    c = neu["device.json"]
+    check("Uebernahme: Pedale erkannt", art == "pedale")
+    check("Uebernahme Pedale: Belegung gueltig %s" % cfg.validate(cfg.normalize(c), pico.pin_id, pico.analog_ok),
+          not cfg.validate(cfg.normalize(c), pico.pin_id, pico.analog_ok))
+    check("Uebernahme Pedale: Waegezelle auf GP1/GP0", c["axes"][1]["type"] == "hx711"
+          and c["axes"][1]["dt"] == "GP1")
+    check("Uebernahme Pedale v9.7: Gamepad X/Y/Z wie bisher",
+          c["usb"]["usage"] == "gamepad" and [a["usage"] for a in c["axes"]] == ["x", "y", "z"])
+    check("Uebernahme Pedale: PID 0x4712", c["usb"]["pid"] == 0x4712)
+    check("Uebernahme Pedale: Rumble-Kanaele", [k["tele"] for k in c["rumble"]["channels"]] == ["bremse", "gas"])
+    cal = neu["calibration.json"]
+    check("Uebernahme Pedale: AS5600 mit Typ as5600", cal[0]["typ"] == "as5600" and cal[0]["start"] == 64000)
+    check("Uebernahme Pedale: Weg um die Reserve zurueckgerechnet", cal[0]["span"] == 3000)
+    check("Uebernahme Pedale: Kennlinie bleibt", cal[1]["curve"] == [[0, 0], [50, 30], [100, 100]])
+    check("Uebernahme Pedale: v8-Datensatz umgerechnet", cal[2]["start"] == 4000 and cal[2]["span"] < 0)
+    d2 = _alt("pedale", "settings.py")
+    d2["boot.py"] = _alt("pedale", "boot_v99.py")["boot_v99.py"]
+    c2 = uebernahme.plan(d2)[1]["device.json"]
+    check("Uebernahme Pedale v9.9: Joystick Rx/Ry/Rz",
+          c2["usb"]["usage"] == "joystick" and [a["usage"] for a in c2["axes"]] == ["rx", "ry", "rz"])
+
+
+def test_uebernahme_buttonbox():
+    import uebernahme
+    pico = pins_fuer("rp2040")
+    d = _alt("buttonbox", "settings.py", "boot.py", "calibration_bb.json", "logic_bb.json")
+    art, neu, hinweise = uebernahme.plan(d)
+    c = neu["device.json"]
+    check("Uebernahme: Buttonbox erkannt", art == "buttonbox")
+    f = cfg.validate(cfg.normalize(c), pico.pin_id, pico.analog_ok)
+    check("Uebernahme Buttonbox: Belegung gueltig %s" % f, not f)
+    bl, n, _ = cfg.button_layout(cfg.normalize(c))
+    check("Uebernahme Buttonbox: Nummern wie v2.1 (40, Logik ab 23)",
+          n == 40 and bl[("logic", 0)] == 22 and bl[("button", 10)] == 10)
+    check("Uebernahme Buttonbox: Gamepad mit Rx/Ry/Rz",
+          c["usb"]["usage"] == "gamepad" and [a["usage"] for a in c["axes"]] == ["rx", "ry", "rz"])
+    lg = neu["logic.json"]
+    check("Uebernahme Buttonbox: Logikbuttons", lg["buttons"][1]["expr"] == "AND(b4,b9,b10)"
+          and lg["buttons"][1]["enabled"])
+    check("Uebernahme Buttonbox: unterdrueckte Inputs", lg["suppress"] == [4, 10])
+    check("Uebernahme Buttonbox: LED-Logik", lg["leds"][0] == {"on": "motor", "blink": "AND(b9,b10)"})
+    check("Uebernahme Buttonbox: Kalibrierung", neu["calibration.json"][1] == {"typ": "pot", "start": 48, "span": 65487})
+    check("Uebernahme: keine alte Firmware", uebernahme.plan({"boot.py": "x"})[0] is None)
+
+
 def _pflicht_aus_boot():
     import re
     s = open(os.path.join(FW, "boot.py")).read()

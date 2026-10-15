@@ -322,6 +322,19 @@ def ueber_konsole():
     return ziel
 
 
+def belegung_pruefen(c):
+    """Belegung mit cfg.validate pruefen, wenn cfg.py hier liegt (Quelltext).
+    Im Paket gibt es nur cfg.mpy - dann prueft das Geraet beim Start."""
+    try:
+        import cfg
+    except ImportError:
+        return []
+    try:
+        return cfg.validate(cfg.normalize(c))
+    except Exception as e:
+        return ["Pruefung nicht moeglich: %s" % e]
+
+
 # --- Bibliotheken aus dem Adafruit-Bundle ----------------------------------
 
 BUNDLE_API = ("https://api.github.com/repos/adafruit/"
@@ -543,6 +556,9 @@ def main(argv=None):
                     help="nur anzeigen, nichts schreiben")
     ap.add_argument("--liste", action="store_true", help="Vorlagen anzeigen")
     ap.add_argument("--bundle", help="Adafruit-Bundle (ZIP) statt Download")
+    ap.add_argument("--keine-uebernahme", action="store_true",
+                    help="alte Pedal-/Buttonbox-Firmware nicht uebernehmen, "
+                         "sondern die Vorlage nehmen")
     ap.add_argument("--seriell", action="store_true",
                     help="Board ueber die Konsole in den Wartungsmodus schicken, "
                          "auch wenn schon ein Laufwerk sichtbar ist")
@@ -617,7 +633,34 @@ def main(argv=None):
     dj = os.path.join(ziel, "device.json")
     vorhanden = os.path.exists(dj)
     belegung = None
-    if a.vorlage and (not vorhanden or a.ueberschreiben):
+
+    # Alte Einzel-Firmware (Pedale v9, Buttonbox v2)? Dann die Belegung aus
+    # ihrer settings.py bauen und Kalibrierung und Logik mitnehmen.
+    alt_art, alt_neu, alt_dateien = None, {}, {}
+    if not vorhanden and not a.keine_uebernahme:
+        import uebernahme
+        alt_dateien = uebernahme.dateien_lesen(ziel)
+        alt_art, alt_neu, hinweise = uebernahme.plan(alt_dateien)
+        if alt_art:
+            print("Alte Firmware erkannt: %s - wird uebernommen" %
+                  ("Pedale v9" if alt_art == "pedale" else "Buttonbox v2"))
+            for h in hinweise:
+                print("   ", h)
+            print("    alte Dateien werden in alt/ gesichert")
+            if a.vorlage:
+                print("    (Vorlage '%s' ignoriert - --keine-uebernahme, um sie "
+                      "statt der alten Belegung zu nehmen)" % a.vorlage)
+            belegung = alt_neu["device.json"]
+            fehler = belegung_pruefen(belegung)
+            if fehler:
+                print("    Achtung, die uebernommene Belegung hat Fehler:")
+                for f in fehler:
+                    print("      -", f)
+                print("    Nach dem Start in der Weboberflaeche unter 'Belegung' korrigieren.")
+
+    if alt_art:
+        pass                    # Belegung kommt aus der alten Firmware
+    elif a.vorlage and (not vorhanden or a.ueberschreiben):
         with open(os.path.join(HIER, "presets", a.vorlage + ".json")) as f:
             belegung = json.load(f)
         print("Belegung:  Vorlage '%s' wird device.json%s" %
@@ -661,7 +704,18 @@ def main(argv=None):
         p = os.path.join(ziel, z)
         if os.path.exists(p) and not a.trocken:
             os.remove(p)
-    if belegung is not None and a.vorlage and (not vorhanden or a.ueberschreiben):
+    if alt_art and not a.trocken:
+        # Sicherung der alten Firmware, dann die uebernommenen Dateien
+        for n, text in alt_dateien.items():
+            bytes_durchschreiben(text.encode(), os.path.join(ziel, "alt", n))
+        for n in ("settings.py", "calibration_bb.json", "logic_bb.json",
+                  "lib/adafruit_debouncer.mpy", "lib/adafruit_ticks.mpy"):
+            p = os.path.join(ziel, n)
+            if os.path.exists(p):
+                os.remove(p)
+        for n, daten in alt_neu.items():
+            bytes_durchschreiben(json.dumps(daten).encode(), os.path.join(ziel, n))
+    elif belegung is not None and a.vorlage and (not vorhanden or a.ueberschreiben):
         if not a.trocken:
             durchschreiben(os.path.join(HIER, "presets", a.vorlage + ".json"), dj)
 
