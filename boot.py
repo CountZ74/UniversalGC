@@ -49,7 +49,7 @@ FEHLSTARTS_BIS_RUECKFALL = 2
 # sichtbar - so ist egal, in welcher Reihenfolge die Dateien kopiert werden.
 # (.mpy zaehlt genauso wie .py.)
 PFLICHT = ("code", "cfg", "merker", "pins", "eingaben", "achsen", "kalib",
-           "logik", "tele", "rumble", "leds", "ble_hid", "web")
+           "logik", "tele", "rumble", "leds", "ble_hid", "web", "suche")
 
 
 def existiert(pfad):

@@ -191,10 +191,18 @@ class AnalogIn:
 
     def __init__(self, pin):
         self.phase = hash(pin.n) % 7
+        # SIM_POTI=GP26: dieser Pin verhaelt sich wie ein bewegtes Poti,
+        # alle anderen Analogpins rauschen nur leicht (fuer die Pin-Suche)
+        self.ruhig = os.environ.get("SIM_POTI") not in (None, pin.n)
+
+    def deinit(self):
+        pass
 
     @property
     def value(self):
         t = time.monotonic() - T0
+        if self.ruhig:
+            return 30000 + int(200 * math.sin(t * 50 + self.phase))
         return int(20000 + 15000 * math.sin(t / 3 + self.phase))
 
 
@@ -246,6 +254,9 @@ class Keys:
             self.events.q.append(Ev(0, z))
 
     def reset(self):
+        pass
+
+    def deinit(self):
         pass
 
 

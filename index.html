@@ -190,6 +190,18 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair;border-radius
       <div><button class="btn s" style="width:100%" onclick="presetLaden()">Laden</button></div>
     </div>
   </div>
+  <div class="a" id="suchew">
+    <div class="hd"><b>Pin-Suche</b><span id="su_st"></span></div>
+    <div class="sub" style="margin:4px 0 6px">Findet heraus, was wo angeschlossen ist: Suche starten, dann jedes
+      Bedienelement einmal betätigen – Taster drücken, Encoder ein paar Rasten drehen, Wippen ganz durchziehen.
+      Beobachtet werden nur freie Pins, nur als Eingang. LEDs, Motoren und Wägezellen bitte von Hand eintragen.</div>
+    <div class="br">
+      <button class="btn s" onclick="sucheStart('d')">Taster &amp; Encoder suchen</button>
+      <button class="btn s" onclick="sucheStart('a')">Achsen suchen</button>
+      <button class="btn r k" onclick="sucheStop()">Stopp</button>
+    </div>
+    <div id="su_liste" style="margin-top:8px"></div>
+  </div>
   <div id="cfgform"></div>
   <div class="a">
     <div class="br">
@@ -337,6 +349,47 @@ function render(){
     $('ci').textContent=inp;$('co').textContent=out;draw();
   }
 }
+/* ---------- Pin-Suche ---------- */
+let suTimer=null,suUebernommen={};
+async function sucheStart(m){suUebernommen={};const d=await api('/suche_start?m='+m);sucheZeigen(d);
+  if(!suTimer)suTimer=setInterval(sucheAbfragen,400);}
+async function sucheStop(){const d=await api('/suche_stop');sucheZeigen(d);if(suTimer){clearInterval(suTimer);suTimer=null;}}
+async function sucheAbfragen(){if(tabAkt!=='b')return;const d=await api('/suche');if(d)sucheZeigen(d);
+  if(d&&d.m===null&&suTimer){clearInterval(suTimer);suTimer=null;}}
+function inK(pin){const p=pinSuchen(pin),id=p?p.n:pin;
+  const alle=[K.config_pin];for(const b of K.buttons||[])alle.push(b.pin);for(const e of K.encoders||[])alle.push(e.a,e.b);
+  for(const a of K.axes||[])alle.push(a.pin,a.a,a.b,a.dt,a.sck);
+  return alle.some(x=>{if(!x)return false;const q=pinSuchen(x);return (q?q.n:x)===id;});}
+function sucheZeigen(d){
+  if(!d){return;}
+  if(d.m===null){$('su_st').textContent='aus';if(!Object.keys(suUebernommen).length)$('su_liste').innerHTML='';return;}
+  $('su_st').textContent=(d.m==='a'?'Achsen':'Taster/Encoder')+' · '+d.n+' Pins · noch '+d.rest+' s';
+  const f=d.f&&d.f.length?'<div class="se">'+d.f.map(esc).join('<br>')+'</div>':'';
+  if(!d.v.length){$('su_liste').innerHTML=f+'<div class="meta">Noch nichts erkannt – jetzt ein Bedienelement betätigen.</div>';return;}
+  $('su_liste').innerHTML=f+d.v.map((v,k)=>{
+    let txt,key;
+    if(v.art==='encoder'){txt='Encoder an <b>'+esc(v.a)+'</b> + <b>'+esc(v.b)+'</b>';key='e'+v.a+v.b;}
+    else if(v.art==='achse'){txt='Achse an <b>'+esc(v.a)+'</b> · '+Math.round(v.min/655.35)+'–'+Math.round(v.max/655.35)+' %';key='a'+v.a;}
+    else{txt=(v.art==='schalter'?'Schalter (gehalten)':'Taster')+' an <b>'+esc(v.a)+'</b> · '+v.z+'× gedrückt'+(v.an?' · <b>jetzt gedrückt</b>':'');key='t'+v.a;}
+    const schon=suUebernommen[key]||inK(v.a);
+    return '<div class="lp" style="justify-content:space-between;margin-bottom:4px;white-space:normal">'+
+      '<span><span class="lamp'+(v.an?' on':'')+'" style="display:inline-block"></span> '+txt+'</span>'+
+      (schon?'<span class="sub">übernommen</span>':'<span>'+
+        (v.art==='taster'&&!K.config_pin?'<button class="btn s k" onclick=\'sucheNehmen('+JSON.stringify(v).replace(/'/g,"&#39;")+',"'+key+'",1)\'>als Konfig-Taster</button> ':'')+
+        '<button class="btn g k" onclick=\'sucheNehmen('+JSON.stringify(v).replace(/'/g,"&#39;")+',"'+key+'")\'>übernehmen</button></span>')+'</div>';
+  }).join('');
+}
+function sucheNehmen(v,key,konfig){
+  for(const k of ['buttons','encoders','axes'])if(!Array.isArray(K[k]))K[k]=[];
+  if(konfig)K.config_pin=v.a;
+  else if(v.art==='encoder')K.encoders.push({a:v.a,b:v.b,name:'Encoder '+(K.encoders.length+1),divisor:4,pulse_ms:30});
+  else if(v.art==='achse')K.axes.push({type:'pot',pin:v.a,name:'Achse '+(K.axes.length+1),
+    usage:(USAGES.find(u=>!K.axes.some(a=>a.usage===u))||'slider')});
+  else K.buttons.push(v.art==='schalter'?{pin:v.a,name:'Schalter '+v.a,mode:'pulse'}:{pin:v.a,name:'Taster '+v.a});
+  suUebernommen[key]=1;bauForm();
+  melde('cmsg',true,'Übernommen – noch nicht gespeichert. Namen anpassen, dann „Prüfen“ und „Speichern &amp; Neustart“.');
+}
+
 async function poll(){
   if(!pending&&tabAkt!=='b'){const d=await api('/data');if(d){S=d;render();}}
   setTimeout(poll,(S&&S.st==='sweep')?200:400);

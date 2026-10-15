@@ -322,6 +322,15 @@ class Web:
             self.json(conn, {"ok": ok})
             if ok:
                 app.neustart_bei = time.monotonic() + 0.8
+        # Pin-Suche
+        elif p == "/suche_start":
+            app.suche.starten("a" if self.param(pfad, "m") == "a" else "d")
+            self.json(conn, app.suche.json())
+        elif p == "/suche_stop":
+            app.suche.stoppen()
+            self.json(conn, app.suche.json())
+        elif p == "/suche":
+            self.json(conn, app.suche.json())
         elif p == "/neustart":
             self.json(conn, {"ok": True})
             app.neustart_bei = time.monotonic() + 0.8

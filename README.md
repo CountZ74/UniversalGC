@@ -77,7 +77,7 @@ Beim ESP32-S3 beachten:
    ```
    device.json       Kopie der passenden Vorlage aus presets/ – ZUERST
    cfg.py merker.py pins.py eingaben.py achsen.py kalib.py logik.py tele.py
-   rumble.py leds.py ble_hid.py web.py index.html code.py
+   rumble.py leds.py ble_hid.py web.py suche.py index.html code.py
    presets/          (Ordner)
    lib/              siehe unten
    boot.py           ZULETZT
@@ -132,6 +132,23 @@ das spart beim Laden viel RAM. Die Statusseite zeigt den freien Speicher.
 - **Buttonnummern festhalten:** Jede Quelle (Taster, Matrix, Schieberegister, Encoder,
   Logik) kann ihre erste Nummer mit `btn` festlegen. So bleiben die Zuordnungen im Spiel
   gültig, wenn später etwas dazukommt.
+
+### Pin-Suche
+
+Im Tab *Belegung* findet die **Pin-Suche** heraus, was wo angeschlossen ist:
+
+1. **„Taster & Encoder suchen“** – jeden Taster einmal drücken, jeden Encoder ein paar
+   Rasten drehen, Kippschalter umlegen. Erkannt wird: Taster, gehaltener Schalter (wird als
+   „Impuls“ vorgeschlagen), Encoder (zwei Pins, die abwechselnd schalten).
+2. **„Achsen suchen“** – Potis und Hall-Wippen ganz durchbewegen. In der ersten Sekunde
+   lernt die Suche das Grundrauschen, danach meldet sie Pins, die sich deutlich bewegen.
+3. Bei jedem Fund **„übernehmen“** (oder bei einem Taster „als Konfig-Taster“), Namen
+   anpassen, „Prüfen“, „Speichern & Neustart“.
+
+Beobachtet werden nur freie Pins und nur als Eingang – Ausgänge schaltet die Suche nie.
+Strapping-Pins (ESP32-S3: GPIO0, 3, 45, 46), USB- und Flash-Pins bleiben außen vor. LEDs,
+WS2812, Rumble-Motoren, Wägezellen und Tastenmatrix lassen sich nicht erkennen und werden
+von Hand eingetragen. Die Suche endet nach 5 Minuten von selbst.
 
 ### Wartungsmodus ohne Taster
 

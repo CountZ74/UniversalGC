@@ -431,6 +431,44 @@ def test_telemetrie():
     check("verworfen nach Timeout", t.lesen(5.0) and not t.werte)
 
 
+def test_pin_suche():
+    import suche
+    a = suche.Auswertung(["GPIO4", "GPIO10", "GPIO11", "GPIO21"])
+    a.ereignis(0, True, 1.0)
+    a.ereignis(0, False, 1.2)
+    # Encoder an GPIO10/11: abwechselnde Flanken, 3 Rasten
+    t = 2.0
+    for _ in range(3):
+        for i, z in ((1, True), (2, True), (1, False), (2, False)):
+            a.ereignis(i, z, t)
+            t += 0.02
+    a.ereignis(3, True, 2.0)          # Kippschalter, bleibt an
+    v = a.vorschlaege(4.5)
+    arten = {(e["art"], e["a"]) for e in v}
+    check("Suche: Taster erkannt", ("taster", "GPIO4") in arten)
+    check("Suche: Encoder erkannt", ("encoder", "GPIO10") in arten)
+    check("Suche: Encoder-Pins nicht als Taster", ("taster", "GPIO10") not in arten
+          and ("taster", "GPIO11") not in arten)
+    check("Suche: gehaltener Schalter erkannt", ("schalter", "GPIO21") in arten)
+    # Zwei Taster nacheinander sind kein Encoder
+    b = suche.Auswertung(["A", "B"])
+    for k in range(5):
+        b.ereignis(0, k % 2 == 0, 1.0 + k * 0.1)
+    for k in range(5):
+        b.ereignis(1, k % 2 == 0, 1.6 + k * 0.1)
+    check("Suche: zwei Taster nacheinander kein Encoder", not b.encoder(2.0))
+
+    an = suche.AnalogAuswertung(["GPIO1", "GPIO2"], 0.0)
+    for k in range(20):                       # Lernphase: beide ruhig
+        an.messung(0, 30000 + k, k * 0.05)
+        an.messung(1, 30000 + k * 10, k * 0.05)
+    for k in range(40):                       # GPIO1 wird bewegt
+        an.messung(0, 5000 + k * 1200, 1.0 + k * 0.05)
+        an.messung(1, 30000 + (k % 3) * 100, 1.0 + k * 0.05)
+    v = an.vorschlaege()
+    check("Suche: Achse erkannt", [e["a"] for e in v] == ["GPIO1"])
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])

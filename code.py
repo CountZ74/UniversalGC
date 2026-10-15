@@ -33,7 +33,7 @@ die Rumble-Motoren. Ohne device.json startet der Access Point von selbst.
 Dateien auf CIRCUITPY
 ---------------------
   boot.py code.py cfg.py merker.py pins.py eingaben.py achsen.py kalib.py logik.py
-  tele.py rumble.py leds.py ble_hid.py web.py index.html
+  tele.py rumble.py leds.py ble_hid.py web.py suche.py index.html
   device.json          die Belegung (aus presets/ kopieren oder im Browser)
   presets/*.json       Vorlagen fuer Pedale, Buttonbox, Lenkrad
   calibration.json     wird angelegt
@@ -247,6 +247,8 @@ class App:
 
         from web import Web
         self.web = Web(self)
+        from suche import PinSuche
+        self.suche = PinSuche(self)
 
         # Der Web-Installer fuer den ESP32 traegt das Heim-WLAN in
         # settings.toml ein. CircuitPython verbindet sich dann selbst und
@@ -346,6 +348,7 @@ class App:
         Browser wartet - deshalb laeuft das Geraet dann trotzdem weiter.
         """
         self.ein.update(now)
+        self.suche.schritt(now)
 
         if self.tele.lesen(now) and self.rumble:
             for k in range(self.rumble.n):
@@ -679,6 +682,7 @@ class App:
         if self.rumble:
             self.rumble.not_aus()    # ohne Oberflaeche kein Handbetrieb mehr
         self._cal_speichern()
+        self.suche.stoppen()
         self.web.beenden()
         self.cal_abort()
         self.ble.weiter()
