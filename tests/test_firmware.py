@@ -469,6 +469,37 @@ def test_pin_suche():
     check("Suche: Achse erkannt", [e["a"] for e in v] == ["GPIO1"])
 
 
+def test_installieren():
+    import installieren as inst
+    v, b, c = inst.boot_out_lesen(
+        "Adafruit CircuitPython 10.3.1 on 2026-09-14; VCC-GND YD-ESP32-S3 (N16R8) "
+        "with ESP32S3\nBoard ID:yd_esp32_s3_n16r8\n")
+    check("boot_out: Version, Board, Chip", (v, b, c) == ("10.3.1", "yd_esp32_s3_n16r8", "esp32s3"))
+    _, _, c = inst.boot_out_lesen("Adafruit CircuitPython 10.2.0 on x; Raspberry Pi Pico 2 W with rp2350a\n")
+    check("boot_out: rp2350", c == "rp2350")
+    check("Bibliotheken Lenkrad", inst.noetige_bibliotheken(preset("lenkrad"), "esp32s3")
+          == ["neopixel", "adafruit_ble"])
+    check("Bibliotheken Buttonbox: keine", inst.noetige_bibliotheken(preset("buttonbox"), "rp2350") == [])
+    check("Bibliotheken Pedale (PIO)", inst.noetige_bibliotheken(preset("pedale"), "rp2040")
+          == ["adafruit_pioasm", "adafruit_hx711"])
+    check("Bibliotheken HX711 auf ESP32", inst.noetige_bibliotheken(preset("pedale"), "esp32s3")
+          == ["adafruit_hx711"])
+    kop, weg = inst.plan(FW, "quelltext")
+    ziele = [z for _, z in kop]
+    check("Installation: boot.py zuletzt", ziele[-1] == "boot.py")
+    check("Installation: alle Module dabei", all("%s.py" % m in ziele for m in inst.MODULE))
+    check("Installation: alle Pflichtmodule aus boot.py bekannt",
+          set(inst.MODULE) | {"code"} == set(_pflicht_aus_boot()))
+    check("Installation: alte .mpy werden entfernt", "lib/cfg.mpy" in weg)
+
+
+def _pflicht_aus_boot():
+    import re
+    s = open(os.path.join(FW, "boot.py")).read()
+    m = re.search(r"PFLICHT = \(([^)]*)\)", s)
+    return re.findall(r'"(\w+)"', m.group(1))
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])

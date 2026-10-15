@@ -1,0 +1,70 @@
+# Tests und Release-Paket.
+#
+# Bei jedem Push: Tests auf dem PC, alle Module mit dem mpy-cross von
+# CircuitPython uebersetzen (findet Syntax, die CircuitPython nicht kann),
+# Paket als Artefakt.
+# Bei einem Tag v*: zusaetzlich GitHub-Release mit dem Paket als Download.
+#
+# Neue CircuitPython-Hauptversion: CP_VERSION und CP_BUNDLE anpassen.
+
+name: Paket
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CP_VERSION: "10.3.1"     # Tag im CircuitPython-Repo, fuer mpy-cross
+  CP_BUNDLE: "10.x"        # Bibliotheks-Bundle derselben Hauptversion
+
+jobs:
+  paket:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tests
+        run: python3 tests/test_firmware.py
+
+      - name: mpy-cross von CircuitPython bauen
+        run: |
+          pip install huffman
+          git clone -q --depth 1 --filter=blob:none --sparse -b "$CP_VERSION" \
+            https://github.com/adafruit/circuitpython cpsrc
+          git -C cpsrc sparse-checkout set py mpy-cross shared supervisor tools extmod locale
+          make -C cpsrc/mpy-cross -j4
+          cpsrc/mpy-cross/build/mpy-cross --version
+
+      - name: Bibliotheks-Bundle holen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo adafruit/Adafruit_CircuitPython_Bundle \
+            --pattern "adafruit-circuitpython-bundle-${CP_BUNDLE}-mpy-*.zip" --dir bundle
+          ls bundle
+
+      - name: Paket bauen
+        run: |
+          python3 werkzeuge/paket.py --mpy-cross cpsrc/mpy-cross/build/mpy-cross \
+            --bundle bundle/*.zip --ausgabe dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UniversalGC-Paket
+          path: dist/*.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip

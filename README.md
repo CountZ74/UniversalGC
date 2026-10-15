@@ -70,40 +70,51 @@ Beim ESP32-S3 beachten:
 
 ## Installation
 
-1. CircuitPython auf das Board spielen (https://circuitpython.org/downloads): mit
-   gedrückter BOOTSEL-Taste einstecken, die `.uf2` auf das Laufwerk ziehen.
-2. Das Board erscheint als Laufwerk **`CIRCUITPY`**. Im Datei-Explorer dorthin kopieren
-   (Thonny ist dafür nicht nötig):
+1. CircuitPython auf das Board spielen (https://circuitpython.org/downloads).
+2. **Release-Paket** von der Releases-Seite laden (`UniversalGC-<version>-cp10.zip` für
+   CircuitPython 10.x) und entpacken. Darin sind die Module vorkompiliert – das spart auf
+   dem Pico W spürbar Speicher – und die nötigen Bibliotheken.
+3. Installieren:
+   ```bash
+   python3 installieren.py lenkrad      # mit Vorlage als device.json
+   python3 installieren.py              # nur aktualisieren, Belegung bleibt
+   python3 installieren.py --liste      # Vorlagen anzeigen
    ```
-   device.json       Kopie der passenden Vorlage aus presets/ – ZUERST
-   cfg.py merker.py pins.py eingaben.py achsen.py kalib.py logik.py tele.py
-   rumble.py leds.py ble_hid.py web.py suche.py index.html code.py
-   presets/          (Ordner)
-   lib/              siehe unten
-   boot.py           ZULETZT
-   ```
-   Zwischendurch startet CircuitPython nach jeder kopierten Datei neu und meldet
-   eventuell fehlende Module – das ist normal, solange noch nicht alles drauf ist.
-   Fehlt beim Einstecken noch eine Pflichtdatei, lässt `boot.py` das Laufwerk an
-   (in `boot_out.txt` steht dann, was fehlt). `boot.py` zuletzt zu kopieren bleibt
-   trotzdem der sicherste Weg.
-   Unter Linux vor dem Abziehen auswerfen (oder `sync`), sonst sind die letzten
-   Dateien eventuell noch nicht vollständig geschrieben.
-3. Abziehen und neu einstecken. Erst jetzt läuft `boot.py`: das Gerät meldet sich mit
-   seinen Buttons und Achsen, und `CIRCUITPY` ist nicht mehr als Laufwerk sichtbar – das
-   Gerät braucht es selbst zum Speichern. Zurück ans Laufwerk kommt man über den
-   *Wartungsmodus* (Konfigurationstaster beim Einstecken gedrückt halten).
+   Das Skript findet `CIRCUITPY` selbst (Linux, macOS, Windows), kopiert in der richtigen
+   Reihenfolge (`boot.py` zuletzt), entfernt veraltete Dateien, holt fehlende Bibliotheken
+   über [circup](https://github.com/adafruit/circup) und schreibt alles durch, bevor es
+   „Fertig“ meldet. Dasselbe Skript funktioniert auch direkt im Quelltext-Repo.
+4. Laufwerk **auswerfen**, abziehen, neu einstecken.
 
-Fehlt `device.json` oder ist darin kein Konfigurationstaster eingetragen, bleibt
-`CIRCUITPY` sichtbar (Einrichtungsmodus) – sonst gäbe es keinen Weg zurück an die Dateien.
-Das Gerät meldet sich dann mit 8 leeren Buttons, startet den Access Point von selbst
-(WLAN `UniversalGC-Setup`, Passwort `universalgc`) und zeigt im Browser die Vorlagen an.
-Speichern kann es in diesem Zustand nichts: die gewählte Vorlage als `device.json` auf das
-Laufwerk kopieren und neu einstecken.
+Für ein Update muss `CIRCUITPY` sichtbar sein: Wartungsmodus (Konfigurationstaster beim
+Einstecken halten oder Weboberfläche → „Neustart mit Laufwerk“), dann wieder
+`python3 installieren.py`.
+
+Ohne Python geht es auch von Hand: den Inhalt des Pakets auf `CIRCUITPY` kopieren,
+`boot.py` zuletzt, auswerfen. Alte `.py`-Module der Firmware im Hauptverzeichnis vorher
+löschen – sie verdecken die neuen `.mpy` in `lib/`.
+
+Fehlt beim Start noch eine Pflichtdatei, lässt `boot.py` das Laufwerk an (in
+`boot_out.txt` steht, was fehlt). Ohne `device.json` oder ohne Konfigurationstaster
+bleibt `CIRCUITPY` ebenfalls sichtbar (Einrichtungsmodus). Das Gerät meldet sich dann mit
+8 leeren Buttons, startet den Access Point von selbst (WLAN `UniversalGC-Setup`, Passwort
+`universalgc`) und zeigt im Browser die Vorlagen an.
+
+### Paket selbst bauen
+
+```bash
+python3 werkzeuge/paket.py --mpy-cross PFAD/ZU/mpy-cross [--bundle adafruit-…-10.x-mpy-….zip]
+```
+`mpy-cross` muss von **CircuitPython** stammen (nicht von MicroPython) und zur
+Hauptversion auf dem Board passen; gebaut wird er im CircuitPython-Quelltext mit
+`make -C mpy-cross`. GitHub baut das Paket bei jedem Push automatisch
+(`.github/workflows/paket.yml`) und hängt es bei einem Tag `v…` an ein Release.
 
 ### Bibliotheken (`lib/`)
 
-Aus dem Adafruit-Bundle passend zur CircuitPython-Version, nur was gebraucht wird:
+Das Release-Paket enthält sie, `installieren.py` kopiert nur die, die die Belegung
+braucht (sonst holt es sie über circup). Von Hand: aus dem Adafruit-Bundle passend zur
+CircuitPython-Version:
 
 | Wofür | Datei/Ordner |
 |---|---|
@@ -115,9 +126,9 @@ Aus dem Adafruit-Bundle passend zur CircuitPython-Version, nur was gebraucht wir
 Taster, Matrix, Schieberegister und Encoder brauchen nichts – `keypad` und `rotaryio`
 sind eingebaut.
 
-**Speicher:** Auf dem Pico W wird es mit WLAN, vielen Achsen und WS2812 eng. Dann die
-`.py`-Module (alle außer `boot.py` und `code.py`) mit `mpy-cross` zu `.mpy` übersetzen –
-das spart beim Laden viel RAM. Die Statusseite zeigt den freien Speicher.
+**Speicher:** Auf dem Pico W wird es mit WLAN, vielen Achsen und WS2812 eng – dann das
+Release-Paket mit den vorkompilierten Modulen benutzen. Die Statusseite zeigt den freien
+Speicher.
 
 ## Bedienung
 
@@ -215,7 +226,7 @@ NCalc-Formel sinngemäß:
 ## Tests auf dem PC
 
 ```
-python3 tests/test_firmware.py     # Logik, Descriptor, Pins, Kalibrierung …
+python3 tests/test_firmware.py     # Logik, Descriptor, Pins, Kalibrierung, Installer …
 python3 tests/sim.py buttonbox     # ganzes Gerät simuliert, http://localhost:8765
 ```
 

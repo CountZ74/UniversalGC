@@ -47,9 +47,11 @@ FEHLSTARTS_BIS_RUECKFALL = 2
 
 # Ohne diese Dateien laeuft code.py nicht. Fehlt eine, bleibt das Laufwerk
 # sichtbar - so ist egal, in welcher Reihenfolge die Dateien kopiert werden.
-# (.mpy zaehlt genauso wie .py.)
-PFLICHT = ("code", "cfg", "merker", "pins", "eingaben", "achsen", "kalib",
-           "logik", "tele", "rumble", "leds", "ble_hid", "web", "suche")
+# (.mpy zaehlt genauso wie .py, im Hauptverzeichnis oder in lib/ - das
+# Release-Paket legt die Module vorkompiliert nach lib/.)
+PFLICHT = ("code", "app", "cfg", "merker", "pins", "eingaben", "achsen",
+           "kalib", "logik", "tele", "rumble", "leds", "ble_hid", "web",
+           "suche")
 
 
 def existiert(pfad):
@@ -61,7 +63,8 @@ def existiert(pfad):
 
 
 fehlend = [m for m in PFLICHT
-           if not (existiert("/%s.py" % m) or existiert("/%s.mpy" % m))]
+           if not any(existiert(d + m + e) for d in ("/", "/lib/")
+                      for e in (".py", ".mpy"))]
 if not existiert("/index.html"):
     fehlend.append("index.html")
 
