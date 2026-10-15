@@ -82,8 +82,11 @@ Beim ESP32-S3 beachten:
    ```
    Das Skript findet `CIRCUITPY` selbst (Linux, macOS, Windows), kopiert in der richtigen
    Reihenfolge (`boot.py` zuletzt), entfernt veraltete Dateien, holt fehlende Bibliotheken
-   über [circup](https://github.com/adafruit/circup) und schreibt alles durch, bevor es
-   „Fertig“ meldet. Dasselbe Skript funktioniert auch direkt im Quelltext-Repo.
+   selbst aus dem offiziellen Adafruit-Bundle passend zur CircuitPython-Version (wird in
+   `~/.cache/universalgc` zwischengespeichert; ohne Internet notfalls
+   [circup](https://github.com/adafruit/circup) oder `--bundle ZIP`) und schreibt alles
+   durch, bevor es „Fertig“ meldet. Dasselbe Skript funktioniert auch direkt im
+   Quelltext-Repo (`UniversalGC-main`).
 4. Laufwerk **auswerfen**, abziehen, neu einstecken.
 
 **Update eines Boards im Normalbetrieb** (Laufwerk aus): einfach `python3 installieren.py`.
@@ -98,7 +101,7 @@ halten oder Weboberfläche → „Neustart mit Laufwerk“).
 
 | System | pyserial | circup |
 |---|---|---|
-| Arch / Manjaro | `sudo pacman -S python-pyserial` | `pipx install circup` |
+| Arch / Manjaro | `sudo pacman -S python-pyserial` | `pipx install circup` (meist nicht nötig) |
 | Debian / Ubuntu | `sudo apt install python3-serial` | `pipx install circup` |
 | Windows / macOS | `pip install pyserial` | `pip install circup` |
 

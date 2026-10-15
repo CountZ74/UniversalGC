@@ -600,6 +600,24 @@ def test_konsole():
           "UGC:" in inst.ABFRAGE and not inst.ABFRAGE.startswith("UGC:"))
 
 
+def test_bundle_eintraege():
+    import io
+    import zipfile
+    import installieren as inst
+    puffer = io.BytesIO()
+    w = "adafruit-circuitpython-bundle-10.x-mpy-20261014/lib/"
+    with zipfile.ZipFile(puffer, "w") as z:
+        for n in ("neopixel.mpy", "adafruit_ble/__init__.mpy", "adafruit_ble/a/b.mpy",
+                  "adafruit_ble_apple_media.mpy", "adafruit_hx711/hx711.mpy"):
+            z.writestr(w + n, b"x")
+    with zipfile.ZipFile(puffer) as z:
+        ble = sorted(r for r, _ in inst.bundle_eintraege(z, "adafruit_ble"))
+        check("Bundle: adafruit_ble komplett, aber kein adafruit_ble_apple_media",
+              ble == ["adafruit_ble/__init__.mpy", "adafruit_ble/a/b.mpy"])
+        check("Bundle: neopixel", [r for r, _ in inst.bundle_eintraege(z, "neopixel")] == ["neopixel.mpy"])
+        check("Bundle: fehlende Bibliothek leer", inst.bundle_eintraege(z, "adafruit_pioasm") == [])
+
+
 def _pflicht_aus_boot():
     import re
     s = open(os.path.join(FW, "boot.py")).read()

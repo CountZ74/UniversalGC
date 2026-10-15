@@ -30,7 +30,7 @@ import zipfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-from installieren import MODULE, BIBLIOTHEKEN   # noqa: E402
+from installieren import MODULE, BIBLIOTHEKEN, bundle_eintraege   # noqa: E402
 
 LIESMICH = """UniversalGC {v} fuer CircuitPython {cp}.x
 ==========================================
@@ -70,19 +70,16 @@ def cp_hauptversion(mpy_cross):
 
 def bibliotheken_aus_bundle(bundle, ziel_lib):
     with zipfile.ZipFile(bundle) as z:
-        namen = z.namelist()
-        for lib, eintrag in BIBLIOTHEKEN.items():
-            muster = "/lib/" + eintrag
-            treffer = [n for n in namen if muster in n and not n.endswith("/")]
-            if not treffer:
+        for lib in BIBLIOTHEKEN:
+            dateien = bundle_eintraege(z, lib)
+            if not dateien:
                 print("  WARNUNG: %s nicht im Bundle" % lib)
                 continue
-            for n in treffer:
-                rel = n[n.index("/lib/") + 5:]
+            for rel, daten in dateien:
                 ziel = os.path.join(ziel_lib, rel)
                 os.makedirs(os.path.dirname(ziel), exist_ok=True)
-                with z.open(n) as q, open(ziel, "wb") as f:
-                    f.write(q.read())
+                with open(ziel, "wb") as f:
+                    f.write(daten)
             print("  Bibliothek", lib)
 
 

@@ -322,6 +322,80 @@ def ueber_konsole():
     return ziel
 
 
+# --- Bibliotheken aus dem Adafruit-Bundle ----------------------------------
+
+BUNDLE_API = ("https://api.github.com/repos/adafruit/"
+              "Adafruit_CircuitPython_Bundle/releases/latest")
+
+
+def bundle_eintraege(zipf, name):
+    """Alle Dateien einer Bibliothek im Bundle: Liste (Pfad unter lib/, Bytes)."""
+    eintrag = BIBLIOTHEKEN[name]
+    out = []
+    for n in zipf.namelist():
+        if n.endswith("/") or "/lib/" not in n:
+            continue
+        rel = n[n.index("/lib/") + 5:]
+        if rel == eintrag or rel.startswith(eintrag + "/"):
+            out.append((rel, zipf.read(n)))
+    return out
+
+
+def cache_ordner():
+    basis = (os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME")
+             or os.path.join(os.path.expanduser("~"), ".cache"))
+    p = os.path.join(basis, "universalgc")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+
+def bundle_holen(haupt):
+    """Adafruit-Bundle fuer CircuitPython <haupt>.x laden (oder aus dem Cache).
+    Rueckgabe: Pfad zur ZIP oder None."""
+    import urllib.request
+    muster = "adafruit-circuitpython-bundle-%s.x-mpy-" % haupt
+    cache = cache_ordner()
+    try:
+        req = urllib.request.Request(BUNDLE_API, headers={"User-Agent": "UniversalGC"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            rel = json.load(r)
+        asset = [x for x in rel.get("assets", []) if x["name"].startswith(muster)
+                 and x["name"].endswith(".zip")]
+    except Exception as e:
+        asset = []
+        print("  Bundle-Liste nicht abrufbar (%s)" % e)
+    if not asset:
+        # Offline oder API-Limit: das neueste im Cache nehmen
+        alt = sorted(n for n in os.listdir(cache) if n.startswith(muster))
+        if alt:
+            print("  nehme Bundle aus dem Cache:", alt[-1])
+            return os.path.join(cache, alt[-1])
+        return None
+    a = asset[0]
+    pfad = os.path.join(cache, a["name"])
+    if os.path.exists(pfad) and os.path.getsize(pfad) == a.get("size"):
+        return pfad
+    print("  lade %s (%d MB) ..." % (a["name"], a.get("size", 0) // 1000000))
+    try:
+        req = urllib.request.Request(a["browser_download_url"],
+                                     headers={"User-Agent": "UniversalGC"})
+        with urllib.request.urlopen(req, timeout=120) as r, open(pfad + ".teil", "wb") as f:
+            shutil.copyfileobj(r, f)
+        os.replace(pfad + ".teil", pfad)
+    except Exception as e:
+        print("  Download fehlgeschlagen:", e)
+        return None
+    return pfad
+
+
+def bytes_durchschreiben(daten, ziel):
+    os.makedirs(os.path.dirname(ziel) or ".", exist_ok=True)
+    with open(ziel, "wb") as f:
+        f.write(daten)
+        f.flush()
+        os.fsync(f.fileno())
+
+
 # --- Laufwerk finden --------------------------------------------------------
 
 def linux_einhaengen():
@@ -468,6 +542,7 @@ def main(argv=None):
     ap.add_argument("--trocken", action="store_true",
                     help="nur anzeigen, nichts schreiben")
     ap.add_argument("--liste", action="store_true", help="Vorlagen anzeigen")
+    ap.add_argument("--bundle", help="Adafruit-Bundle (ZIP) statt Download")
     ap.add_argument("--seriell", action="store_true",
                     help="Board ueber die Konsole in den Wartungsmodus schicken, "
                          "auch wenn schon ein Laufwerk sichtbar ist")
@@ -609,6 +684,26 @@ def main(argv=None):
         else:
             fehlende.append(name)
     if fehlende and not a.trocken:
+        # Aus dem Adafruit-Bundle: angegeben, sonst passend zur Version laden
+        haupt = (version or "10").split(".")[0]
+        bundle = a.bundle or bundle_holen(haupt)
+        if bundle:
+            import zipfile
+            with zipfile.ZipFile(bundle) as zf:
+                noch = []
+                for name in fehlende:
+                    dateien = bundle_eintraege(zf, name)
+                    if not dateien:
+                        noch.append(name)
+                        continue
+                    z = os.path.join(ziel, "lib", BIBLIOTHEKEN[name])
+                    if os.path.isdir(z):
+                        shutil.rmtree(z)
+                    for rel, daten in dateien:
+                        bytes_durchschreiben(daten, os.path.join(ziel, "lib", rel))
+                    print("  Bibliothek %s aus dem Bundle" % name)
+                fehlende = noch
+    if fehlende and not a.trocken:
         if shutil.which("circup"):
             print("Hole ueber circup:", ", ".join(fehlende))
             r = subprocess.run(["circup", "--path", ziel, "install"] + fehlende)
@@ -616,8 +711,7 @@ def main(argv=None):
                 print("circup ist fehlgeschlagen - Bibliotheken bitte von Hand aus "
                       "https://circuitpython.org/libraries nach lib/ kopieren.")
         else:
-            print("Fehlende Bibliotheken: %s\n  Entweder 'pip install circup' und das "
-                  "Skript erneut starten,\n  oder aus https://circuitpython.org/libraries "
+            print("Fehlende Bibliotheken: %s\n  Bitte aus https://circuitpython.org/libraries "
                   "(Bundle %s.x) nach lib/ kopieren." %
                   (", ".join(fehlende), (version or "10").split(".")[0]))
 
