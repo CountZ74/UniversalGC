@@ -178,6 +178,11 @@ class Sweep:
     as5600  Abdeckungskarte (Pedale v9.3): angekreuzt wird, WO die Achse war,
             nicht wie weit sie lief. Eine Messpause laesst hoechstens ein Feld
             leer, das der naechste Durchgang wieder fuellt.
+            Fuer den Weg zaehlen nicht nur ganze Felder: je Feld wird der
+            kleinste und groesste tatsaechlich gemessene Wert gemerkt, damit
+            Start und Ende auf den Rohwert genau stimmen. Ganze Felder allein
+            lagen bis zu 256 Rohwerte (1,4 Grad) daneben - bei kurzem
+            Pedalweg erreichte das Pedal dann nur rund 97 Prozent.
     hx711   groesste Kraft.
     """
 
@@ -189,8 +194,27 @@ class Sweep:
         self.cover = None
         if typ == "as5600":
             self.cover = bytearray(SWEEP_FELDER)
+            # kleinster/groesster gemessener Wert innerhalb jedes Feldes
+            # (untere 8 bit); -1/256 = dort nie gemessen
+            self.fmin = [256] * SWEEP_FELDER
+            self.fmax = [-1] * SWEEP_FELDER
             self.feld = null >> SWEEP_SHIFT
             self.cover[self.feld] = 1
+            self._merken(null)
+
+    def _merken(self, raw):
+        f = raw >> SWEEP_SHIFT
+        r = raw & (SWEEP_BREITE - 1)
+        if r < self.fmin[f]:
+            self.fmin[f] = r
+        if r > self.fmax[f]:
+            self.fmax[f] = r
+
+    def _durchlaufen(self, i):
+        """Feld zwischen zwei Messungen: ganz ueberstrichen."""
+        self.cover[i] = 1
+        self.fmin[i] = 0
+        self.fmax[i] = SWEEP_BREITE - 1
 
     def update(self, raw):
         if self.typ != "as5600":
@@ -202,19 +226,20 @@ class Sweep:
         feld = raw >> SWEEP_SHIFT
         d = (feld - self.feld) % SWEEP_FELDER
         if d == 0:
+            self._merken(raw)
             return
         if d <= SWEEP_FUELL_MAX:                     # aufwaerts, Strecke fuellen
             i = self.feld
-            for _ in range(d):
+            for _ in range(d - 1):
                 i = (i + 1) % SWEEP_FELDER
-                self.cover[i] = 1
+                self._durchlaufen(i)
         elif SWEEP_FELDER - d <= SWEEP_FUELL_MAX:    # abwaerts
             i = self.feld
-            for _ in range(SWEEP_FELDER - d):
+            for _ in range(SWEEP_FELDER - d - 1):
                 i = (i - 1) % SWEEP_FELDER
-                self.cover[i] = 1
-        else:                                        # zu grosser Sprung
-            self.cover[feld] = 1
+                self._durchlaufen(i)
+        self.cover[feld] = 1                         # Endpunkt: echte Messung
+        self._merken(raw)
         self.feld = feld
 
     def wege(self):
@@ -238,7 +263,16 @@ class Sweep:
             if not self.cover[i]:
                 break
             rueck += 1
-        return vor * SWEEP_BREITE, rueck * SWEEP_BREITE
+        # Auf den Rohwert genau: vom Nullpunkt bis zum aeussersten gemessenen
+        # Wert im letzten Feld der Strecke
+        rest = self.null & (SWEEP_BREITE - 1)
+        ende = (null + vor) % SWEEP_FELDER
+        fmax = self.fmax[ende] if self.fmax[ende] >= 0 else SWEEP_BREITE - 1
+        auf = max(0, vor * SWEEP_BREITE + fmax - rest)
+        ende = (null - rueck) % SWEEP_FELDER
+        fmin = self.fmin[ende] if self.fmin[ende] < SWEEP_BREITE else 0
+        ab = max(0, rueck * SWEEP_BREITE + rest - fmin)
+        return auf, ab
 
     def weg(self):
         a, b = self.wege()

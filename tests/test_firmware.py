@@ -335,6 +335,35 @@ def test_kalib_sweep():
     check("pot-Sweep: zu wenig Bewegung", s.ergebnis() is None)
 
 
+def test_kalib_sweep_genau():
+    """Der Weg muss auf den Rohwert stimmen, nicht nur auf ganze Felder."""
+    null = 10 * 256 + 200                 # Ruhestellung spaet im Feld 10
+    ende = 30 * 256 + 50                  # Anschlag frueh im Feld 30
+    s = kalib.Sweep("as5600", null)
+    for _ in range(3):
+        for r in range(null, ende + 1, 97):
+            s.update(r)
+        s.update(ende)
+        for r in range(ende, null - 1, -97):
+            s.update(r)
+    st, sp = s.ergebnis()
+    check("Sweep genau: Weg = %d (soll %d)" % (sp, ende - null), sp == ende - null)
+    c = kalib.cal_default("as5600")
+    c["start"], c["span"] = st, sp
+    check("Sweep genau: Anschlag ergibt 100 %", kalib.norm(ende, c, 0.015, 0.02) == 1.0)
+    # abwaerts, ueber den Nulldurchgang
+    null = 2 * 256 + 30
+    ende = (null - 4000) % 65536
+    s = kalib.Sweep("as5600", null)
+    r = null
+    for _ in range(4000 // 80):
+        r = (r - 80) % 65536
+        s.update(r)
+    s.update(ende)
+    st, sp = s.ergebnis()
+    check("Sweep genau abwaerts ueber Null: Weg = %d (soll -4000)" % sp, sp == -4000)
+
+
 def test_kalib_raender_kurve():
     c = kalib.cal_default("pot")
     c["start"], c["span"] = 0, 10000
