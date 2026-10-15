@@ -570,6 +570,32 @@ def test_konsole():
     k4.zur_repl()
     k4.befehl(inst.WARTUNG)
     check("Konsole: Wartungsmodus ausgeloest", f4.wartung)
+    # Echtes Verhalten: nach merker.wartung() verschwindet der Port
+    weg = FakeRepl("Pedale")
+    orig = weg._ausfuehren
+
+    def mit_reset(cmd, orig=orig, f=weg):
+        r = orig(cmd)
+        if f.wartung:
+            def kaputt():
+                raise OSError(5, "Input/output error")
+            type(f).in_waiting = property(lambda self: kaputt())
+        return r
+    weg._ausfuehren = mit_reset
+    fake_serial = types.SimpleNamespace(Serial=lambda *a, **k: weg,
+                                        SerialException=Exception)
+    weg.close = lambda: None
+    sys.modules["serial"] = fake_serial
+    alt_konsole = inst.Konsole
+    inst.Konsole = lambda s: alt_konsole(s, warte=lambda x: None)
+    try:
+        check("Wartung: verschwindender Port gilt als Erfolg",
+              inst.wartung_ausloesen("/dev/ttyACM0") is None and weg.wartung)
+    finally:
+        inst.Konsole = alt_konsole
+        del sys.modules["serial"]
+        del FakeRepl.in_waiting
+        FakeRepl.in_waiting = property(lambda self: len(self.puffer))
     check("Konsole: Echo der Abfrage ist kein Treffer",
           "UGC:" in inst.ABFRAGE and not inst.ABFRAGE.startswith("UGC:"))
 

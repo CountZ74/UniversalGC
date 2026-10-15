@@ -241,15 +241,32 @@ def seriell_suchen():
 
 
 def wartung_ausloesen(port):
+    """None bei Erfolg, sonst Fehlertext.
+
+    Erfolg heisst: das Board startet neu - dabei verschwindet sein COM-Port,
+    und jeder weitere Zugriff endet mit einem Ein-/Ausgabefehler. Der ist
+    hier also das erwartete Zeichen, dass es geklappt hat."""
     import serial
-    with serial.Serial(port, 115200, timeout=0.2) as s:
+    try:
+        s = serial.Serial(port, 115200, timeout=0.2)
+    except (OSError, serial.SerialException) as e:
+        return "Port nicht zu oeffnen: %s" % e
+    try:
         k = Konsole(s)
         if not k.zur_repl():
             return "Board antwortet nicht"
-        antwort = k.befehl(WARTUNG, 1.0)
+        try:
+            antwort = k.befehl(WARTUNG, 1.0)
+        except (OSError, serial.SerialException):
+            return None                     # Port weg = Board startet neu
         if "Error" in antwort:
             return antwort.strip().splitlines()[-1]
-    return None
+        return None
+    finally:
+        try:
+            s.close()
+        except (OSError, serial.SerialException):
+            pass
 
 
 def auf_laufwerk_warten(vorher, sekunden=30):
@@ -307,7 +324,32 @@ def ueber_konsole():
 
 # --- Laufwerk finden --------------------------------------------------------
 
+def linux_einhaengen():
+    """Linux: ein vorhandenes, aber nicht eingehaengtes CIRCUITPY einhaengen
+    (wie es der Dateimanager tut). Ohne Desktop haengt es sonst niemand ein."""
+    if not sys.platform.startswith("linux") or not shutil.which("lsblk"):
+        return
+    try:
+        out = subprocess.run(["lsblk", "-rno", "NAME,LABEL,MOUNTPOINT"],
+                             capture_output=True, text=True).stdout
+    except OSError:
+        return
+    for zeile in out.splitlines():
+        teile = zeile.split(" ")
+        if len(teile) >= 2 and teile[1].upper().startswith("CIRCUITPY") \
+                and (len(teile) < 3 or not teile[2]):
+            if shutil.which("udisksctl"):
+                print("Haenge /dev/%s (CIRCUITPY) ein ..." % teile[0])
+                subprocess.run(["udisksctl", "mount", "-b", "/dev/" + teile[0],
+                                "--no-user-interaction"],
+                               capture_output=True, text=True)
+            else:
+                print("CIRCUITPY (/dev/%s) ist nicht eingehaengt - bitte im "
+                      "Dateimanager anklicken." % teile[0])
+
+
 def laufwerk_suchen():
+    linux_einhaengen()
     kandidaten = []
     if sys.platform.startswith("win"):
         try:
