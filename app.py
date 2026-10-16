@@ -29,6 +29,10 @@ Bedienung
 Konfigurationstaster kurz druecken: WLAN-Access-Point an/aus. Mit dem Handy
 verbinden und http://192.168.4.1 oeffnen. Der Taster ist zugleich Not-Aus fuer
 die Rumble-Motoren. Ohne device.json startet der Access Point von selbst.
+Statt des Tasters (oder zusaetzlich) geht eine Tastenkombination
+(config_combo): die Buttons gemeinsam halten, bis die Status-LED blinkt.
+Beim Einstecken gehalten, oeffnet sie wie der Taster das Laufwerk - das geht
+nur mit direkt angeschlossenen Tastern.
 
 Dateien auf CIRCUITPY
 ---------------------
@@ -229,6 +233,13 @@ class App:
                                           interval=0.03)
             except Exception as e:
                 self.fehler.append("Konfigurationstaster: %s" % e)
+        self.combo, kf = cfg.combo_bits(c)
+        if kf:
+            self.fehler.extend(kf)
+            self.combo = []
+        self.combo_halten = float((c.get("config_combo") or {}).get("hold", 3.0))
+        self.combo_seit = None
+        self.combo_erledigt = False
 
         # --- HID ---
         self.usage = cfg.device_usage(c)
@@ -683,11 +694,31 @@ class App:
         except Exception as e:
             print("WLAN-Start fehlgeschlagen:", e)
             self.ble.weiter()
-            if self.quelle == "default" or self.taster is None:
+            if self.quelle == "default" or not self.zugang():
                 # Im Einrichtungsmodus ist der AP der einzige Zugang -
                 # in 10 Sekunden noch einmal.
                 self.ap_wunsch = True
                 self.ap_naechster = time.monotonic() + 10.0
+
+    def zugang(self):
+        return self.taster is not None or bool(self.combo)
+
+    def combo_pruefen(self, now):
+        """True genau einmal, wenn die Kombination lange genug gehalten
+        wurde. Danach erst wieder, wenn alle losgelassen waren."""
+        if not self.combo:
+            return False
+        phys = self.ein.phys
+        if all(phys[b] for b in self.combo):
+            if self.combo_seit is None:
+                self.combo_seit = now
+            elif not self.combo_erledigt and now - self.combo_seit >= self.combo_halten:
+                self.combo_erledigt = True
+                return True
+        else:
+            self.combo_seit = None
+            self.combo_erledigt = False
+        return False
 
     def wlan_beenden(self):
         if self.rumble:
@@ -709,10 +740,11 @@ class App:
         if self.quelle == "default":
             print("Keine device.json - Access Point startet von selbst")
             self.wlan_umschalten()
-        elif self.taster is None:
+        elif not self.zugang():
             # Kein nutzbarer Konfigurationstaster (nicht eingetragen, oder der
-            # Pinname passt nicht zum Board) - dann ist der Access Point der
-            # einzige Weg an die Einstellungen. Also gleich starten.
+            # Pinname passt nicht zum Board) und keine Tastenkombination -
+            # dann ist der Access Point der einzige Weg an die Einstellungen.
+            # Also gleich starten.
             print("Kein Konfigurationstaster - Access Point startet von selbst")
             self.wlan_umschalten()
 
@@ -724,6 +756,8 @@ class App:
                 e = self.taster.events.get()
                 if e and e.pressed:
                     self.wlan_umschalten()
+            if self.combo_pruefen(now):
+                self.wlan_umschalten()
 
             if self.ap_wunsch and not self.web.aktiv and now >= self.ap_naechster:
                 self.wlan_umschalten()

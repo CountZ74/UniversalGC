@@ -94,7 +94,7 @@ elif quelle == "backup":
 
 # --- Wartungsmodus? ----------------------------------------------------------
 
-# Ohne lesbaren Konfigurationstaster gaebe es keinen Weg zurueck an das
+# Ohne Konfigurationstaster und ohne Tastenkombination gaebe es keinen Weg zurueck an das
 # Laufwerk - dann bleibt es sichtbar. Das ist vor allem der Fall bei einem
 # frisch bespielten Board ohne device.json: Dort wuerde sonst schon das
 # Kopieren der Dateien abbrechen, sobald boot.py einmal gelaufen ist.
@@ -104,18 +104,37 @@ pin = c.get("config_pin")
 if fehlend:
     einrichtung = True
     meldungen.append("es fehlt: " + ", ".join(fehlend))
-elif quelle == "default" or not pin:
+elif quelle == "default" or not cfg.zugang(c):
     einrichtung = True
 else:
-    try:
-        taster = digitalio.DigitalInOut(pins.board_pin(board, pin))
-        taster.direction = digitalio.Direction.INPUT
-        taster.pull = digitalio.Pull.UP
-        wartungsmodus = not taster.value    # gegen GND: gedrueckt = False
-        taster.deinit()                     # Pin freigeben, code.py braucht ihn
-    except Exception as e:
-        meldungen.append("Taster %s nicht lesbar: %s" % (pin, e))
-        einrichtung = True
+    def gedrueckt(name):
+        t = digitalio.DigitalInOut(pins.board_pin(board, name))
+        t.direction = digitalio.Direction.INPUT
+        t.pull = digitalio.Pull.UP
+        an = not t.value                    # gegen GND: gedrueckt = False
+        t.deinit()                          # Pin freigeben, code.py braucht ihn
+        return an
+
+    if pin:
+        try:
+            wartungsmodus = gedrueckt(pin)
+        except Exception as e:
+            meldungen.append("Taster %s nicht lesbar: %s" % (pin, e))
+            einrichtung = True
+    # Tastenkombination beim Einstecken halten: geht nur mit direkten Tastern
+    # (Matrix und Schieberegister laufen erst in code.py).
+    bits, _ = cfg.combo_bits(c)
+    if bits and not wartungsmodus and not einrichtung:
+        bloecke, _, _ = cfg.button_layout(c)
+        direkt = {}
+        for i, b in enumerate(c["buttons"]):
+            if ("button", i) in bloecke and not b.get("invert"):
+                direkt[bloecke[("button", i)]] = b["pin"]
+        if all(b in direkt for b in bits):
+            try:
+                wartungsmodus = all(gedrueckt(direkt[b]) for b in bits)
+            except Exception as e:
+                meldungen.append("Kombination nicht lesbar: %s" % e)
 
 # Wartungsmodus ohne Taster, angefordert ueber Weboberflaeche oder Konsole.
 # Gilt nur fuer diesen einen Start.

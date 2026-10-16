@@ -69,6 +69,9 @@ def defaults():
                  "channel": 6, "port": 80},
         "ble": {"enabled": False, "name": ""},
         "config_pin": "",
+        # Tastenkombination statt (oder zusaetzlich zu) einem eigenen Taster:
+        # Buttonnummern wie am PC (ab 1), gemeinsam "hold" Sekunden halten.
+        "config_combo": {"buttons": [], "hold": 3.0},
         "status_led": "",
         "telemetry": {"enabled": True, "timeout": 2.0},
         "options": {"debounce_ms": 20, "axis_threshold": 0,
@@ -174,6 +177,50 @@ def button_quellen(c):
     if n > 0:
         q.append(("logic", 0, n, lg.get("first") or None))
     return q
+
+
+def combo_bits(c):
+    """Bits der Konfig-Tastenkombination. Rueckgabe: (bits, fehler).
+
+    Nur echte Schalter zaehlen (Taster, Matrix, Schieberegister) - Encoder
+    geben nur kurze Impulse, Logikbuttons haengen selbst an anderen Buttons.
+    """
+    k = c.get("config_combo") or {}
+    nummern = k.get("buttons") or []
+    if not nummern:
+        return [], []
+    bloecke, _, _ = button_layout(c)
+    schalter = set()
+    for art, idx, n, _ in button_quellen(c):
+        if art in ("button", "matrix", "shift") and (art, idx) in bloecke:
+            for b in range(bloecke[(art, idx)], bloecke[(art, idx)] + n):
+                schalter.add(b)
+    bits, f = [], []
+    for nr in nummern:
+        try:
+            b = int(nr) - 1
+        except (TypeError, ValueError):
+            f.append("Tastenkombination: '%s' ist keine Buttonnummer" % nr)
+            continue
+        if b not in schalter:
+            f.append("Tastenkombination: Button %s ist kein Taster, Matrix- oder "
+                     "Schieberegister-Eingang" % nr)
+        elif b not in bits:
+            bits.append(b)
+    if len(bits) < 2 and not f:
+        f.append("Tastenkombination braucht mindestens zwei verschiedene Buttons")
+    try:
+        if float(k.get("hold", 3.0)) < 0.5:
+            f.append("Tastenkombination: Haltezeit mindestens 0,5 s")
+    except (TypeError, ValueError):
+        f.append("Tastenkombination: Haltezeit ist keine Zahl")
+    return bits, f
+
+
+def zugang(c):
+    """Gibt es einen Weg an die Einstellungen ohne automatischen AP?"""
+    bits, f = combo_bits(c)
+    return bool(c.get("config_pin")) or (bool(bits) and not f)
 
 
 def button_layout(c):
@@ -452,9 +499,11 @@ def validate(c, pin_id=None, analog_ok=None):
     pw = w.get("password") or ""
     if pw and len(pw) < 8:
         f.append("WLAN-Passwort braucht mindestens 8 Zeichen (oder leer)")
-    if not c.get("config_pin"):
-        f.append("Kein Konfigurationstaster - ohne ihn kommt man weder an das "
-                 "WLAN noch an das Laufwerk")
+    _, kf = combo_bits(c)
+    f.extend(kf)
+    if not c.get("config_pin") and not (c.get("config_combo") or {}).get("buttons"):
+        f.append("Weder Konfigurationstaster noch Tastenkombination - ohne "
+                 "sie kommt man weder an das WLAN noch an das Laufwerk")
     if n_btn == 0 and not c["axes"]:
         f.append("Weder Buttons noch Achsen - das Geraet haette nichts zu melden")
     return f

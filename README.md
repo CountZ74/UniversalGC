@@ -156,6 +156,14 @@ Speicher.
   Rumble-Motoren.
 - **Wartungsmodus:** Konfigurationstaster beim Einstecken gedrückt halten → `CIRCUITPY`
   bleibt als Laufwerk sichtbar, dafür kann das Gerät nicht speichern.
+- **Tastenkombination statt Konfigurationstaster:** unter *Belegung* →
+  *Tastenkombination* Buttonnummern eintragen (z. B. `1, 2`), in `device.json`:
+  `"config_combo": {"buttons": [1, 2], "hold": 3}`. Alle gemeinsam `hold` Sekunden
+  halten schaltet den Access Point an/aus. Erlaubt sind Taster, Matrix- und
+  Schieberegister-Eingänge; die Buttons gehen dabei auch an den PC, also eine
+  Kombination wählen, die im Spiel nichts anrichtet. Beim Einstecken gehalten
+  öffnet sie den Wartungsmodus – das geht nur mit direkt angeschlossenen Tastern,
+  sonst über *Wartung* in der Weboberfläche oder `installieren.py --seriell`.
 - **Belegung ändern:** Tab *Belegung* → *Prüfen* → *Speichern & Neustart*. Der PC liest
   den Aufbau nur beim Einstecken, deshalb der Neustart.
   Neue Buttonnummern oder Achsen müssen im Spiel einmal neu zugeordnet werden.

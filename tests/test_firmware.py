@@ -273,6 +273,42 @@ def test_validate_fehler():
     check("ESP32-S3: IO12 ist ADC2", e.adc2("IO12") and not e.adc2("IO2"))
 
 
+def test_tastenkombination():
+    p = pins_fuer("rp2040")
+    basis = {"buttons": [{"pin": "GP2"}, {"pin": "GP3"}, {"pin": "GP4"}],
+             "encoders": [{"a": "GP6", "b": "GP7"}]}
+    c = cfg.normalize(dict(basis, config_combo={"buttons": [1, 3], "hold": 2}))
+    f = cfg.validate(c, p.pin_id, p.analog_ok)
+    check("Kombination statt Konfigurationstaster gueltig %s" % f, not f)
+    check("Kombination: Bits 0 und 2", cfg.combo_bits(c)[0] == [0, 2])
+    check("Kombination: Zugang ohne Taster", cfg.zugang(c))
+    c = cfg.normalize(dict(basis, config_combo={"buttons": [1]}))
+    check("Kombination: ein Button reicht nicht",
+          not cfg.zugang(c) and any("zwei" in x for x in cfg.validate(c, p.pin_id)))
+    c = cfg.normalize(dict(basis, config_combo={"buttons": [1, 4]}))
+    check("Kombination: Encoder-Button abgelehnt",
+          not cfg.zugang(c) and any("kein Taster" in x for x in cfg.validate(c, p.pin_id)))
+    c = cfg.normalize(dict(basis, config_combo={"buttons": [1, 99]}))
+    check("Kombination: unbekannte Nummer abgelehnt", not cfg.zugang(c))
+    check("ohne Taster und Kombination kein Zugang", not cfg.zugang(cfg.normalize(basis)))
+
+    import app
+    a = types.SimpleNamespace(combo=[0, 2], combo_halten=2.0, combo_seit=None,
+                              combo_erledigt=False,
+                              ein=types.SimpleNamespace(phys=bytearray(4)))
+    pruefen = lambda t: app.App.combo_pruefen(a, t)   # noqa: E731
+    a.ein.phys[0] = 1
+    check("Kombination: ein Button allein loest nicht aus", not pruefen(0) and not pruefen(5))
+    a.ein.phys[2] = 1
+    check("Kombination: zu kurz gehalten", not pruefen(10) and not pruefen(11.5))
+    check("Kombination: nach 2 s ausgeloest", pruefen(12.1))
+    check("Kombination: nur einmal je Halten", not pruefen(15))
+    a.ein.phys[0] = 0
+    pruefen(16)
+    a.ein.phys[0] = 1
+    check("Kombination: nach Loslassen wieder bereit", not pruefen(17) and pruefen(19.5))
+
+
 def test_pin_schreibweisen():
     import pins as pm
     check("Schreibweisen IO21", pm.schreibweisen("IO21") == ["IO21", "GPIO21", "GP21"])
