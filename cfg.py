@@ -135,9 +135,22 @@ def load(rueckfall=False, leise=False):
 
     rueckfall=True nimmt gleich die Sicherung (die neue Belegung startete
     nicht). Rueckgabe: (konfiguration, quelle) mit quelle "device", "backup",
-    "rueckfall" oder "default". Bei "default" startet code.py den Access Point
-    von selbst.
+    "rueckfall", "entwurf" (wartet im NVM aufs Speichern) oder "default".
+    Bei "default" startet code.py den Access Point von selbst.
     """
+    if not rueckfall:
+        # Eine Belegung, die mangels Schreibrecht im NVM wartet (merker.py),
+        # gilt vor der device.json - boot.py meldet das Geraet schon mit ihr an.
+        try:
+            import merker
+            e = merker.entwurf_lesen()
+            if e:
+                d = json.loads(e)
+                if isinstance(d, dict):
+                    return normalize(d), "entwurf"
+        except (ImportError, ValueError) as ex:
+            if not leise:
+                print("Entwurf im NVM nicht lesbar:", ex)
     reihe = ((CONFIG_FILE, "device"), (BACKUP_FILE, "backup"))
     if rueckfall:
         reihe = ((BACKUP_FILE, "rueckfall"), (CONFIG_FILE, "device"))

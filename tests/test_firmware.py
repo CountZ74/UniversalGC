@@ -782,6 +782,26 @@ def test_merker_schont_flash():
         del sys.modules["microcontroller"]
 
 
+def test_entwurf_im_nvm():
+    import merker
+    nvm = bytearray(b"\xff" * 4096)
+    sys.modules["microcontroller"] = types.SimpleNamespace(nvm=nvm)
+    try:
+        check("Entwurf: leerer Flash hat keinen", merker.entwurf_lesen() is None)
+        t = json.dumps(cfg.normalize(json.load(open(os.path.join(FW, "presets", "lenkrad.json")))))
+        check("Entwurf: Lenkrad passt in 4 kB", merker.entwurf_schreiben(t))
+        check("Entwurf: zurueckgelesen", merker.entwurf_lesen() == t)
+        check("Entwurf: Merker unberuehrt", nvm[0] == 0xFF and nvm[1] == 0xFF)
+        c, q = cfg.load(leise=True)
+        check("Entwurf: cfg.load nimmt ihn zuerst", q == "entwurf" and c["name"] == "Lenkrad")
+        check("Entwurf: im Rueckfall nicht", cfg.load(True, leise=True)[1] != "entwurf")
+        check("Entwurf: zu gross abgelehnt", not merker.entwurf_schreiben("x" * 5000))
+        merker.entwurf_loeschen()
+        check("Entwurf: geloescht", merker.entwurf_lesen() is None)
+    finally:
+        del sys.modules["microcontroller"]
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])

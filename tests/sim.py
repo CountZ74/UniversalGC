@@ -70,6 +70,9 @@ def _sim_open(p, mode="r", *a, **k):
     # fuer Python beschreibbar (boot_out.txt ist offen) - Errno 5.
     if BOOT_LAEUFT[0] and _map(p) != p and any(c in mode for c in "wa+"):
         raise OSError(5, "Eingabe-/Ausgabefehler (boot.py darf nicht schreiben)")
+    # Nach boot.py: solange der PC das Laufwerk hat, darf Python nicht schreiben
+    if not BOOT_LAEUFT[0] and USB["laufwerk"] and _map(p) != p and any(c in mode for c in "wa+"):
+        raise OSError(30, "Read-only filesystem (Laufwerk fuer den PC freigegeben)")
     return _open(_map(p), mode, *a, **k)
 
 
@@ -123,7 +126,7 @@ try:
     with _open(NVM_DATEI, "rb") as f:
         nvm = bytearray(f.read())
 except OSError:
-    nvm = bytearray(b"\xff" * 256)
+    nvm = bytearray(b"\xff" * 4096)      # so gross wie beim RP2040
 
 
 def reset():

@@ -89,6 +89,8 @@ if existiert(cfg.PENDING_FILE) and not rueckfall:
 c, quelle = cfg.load(rueckfall, leise=True)
 if quelle == "default":
     meldungen.append("keine lesbare device.json")
+elif quelle == "entwurf":
+    meldungen.append("neue Belegung aus dem NVM, code.py speichert sie")
 elif quelle == "backup":
     meldungen.append("device.json kaputt - Sicherung benutzt")
 

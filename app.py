@@ -127,6 +127,7 @@ class App:
         # NVM-Schreibvorgaenge, die bis zum Neustart warten: sie sollen nicht
         # bei laufendem WLAN passieren (der Pico W haelt dafuer den Chip an)
         self.nvm_beim_neustart = {}
+        self.entwurf_beim_neustart = None
         self.start_zeit = time.monotonic()
         self.schreibbar = self._schreibtest()
 
@@ -583,14 +584,30 @@ class App:
         r = self.config_pruefen(text)
         if not r["ok"]:
             return r
-        if not self.schreibbar:
-            # Typischer Fall: Dateien wurden auf CIRCUITPY kopiert. Danach
-            # startet CircuitPython nur code.py neu, boot.py laeuft erst beim
-            # naechsten echten Neustart - bis dahin gehoert das Laufwerk dem PC.
-            return {"ok": False, "rw": self.neustart_hilft(),
-                    "f": ["Dateisystem schreibgeschuetzt: das Laufwerk CIRCUITPY "
-                          "ist fuer den PC freigegeben"]}
         neu = cfg.normalize(json.loads(text))
+        if not self.schreibbar:
+            # Das Laufwerk gehoert gerade dem PC (Einrichtung, Wartung, oder
+            # nach dem Kopieren noch kein echter Neustart). Dann wartet die
+            # Belegung im NVM, boot.py meldet sich beim Neustart mit ihr an
+            # und sperrt das Laufwerk, entwurf_anwenden() schreibt sie.
+            t = json.dumps(neu)
+            if not cfg.zugang(neu):
+                return {"ok": False, "f": [
+                    "Das Laufwerk CIRCUITPY ist fuer den PC freigegeben, und "
+                    "die neue Belegung hat weder Konfigurationstaster noch "
+                    "Tastenkombination - so koennte das Geraet auch nach dem "
+                    "Neustart nicht speichern."]}
+            if len(t) > merker.entwurf_platz():
+                return {"ok": False, "f": [
+                    "Laufwerk CIRCUITPY ist fuer den PC freigegeben, und die "
+                    "Belegung ist zu gross fuer den Zwischenspeicher (%d Byte, "
+                    "Platz %d). device.json am PC auf das Laufwerk kopieren."
+                    % (len(t), merker.entwurf_platz())]}
+            self.entwurf_beim_neustart = t
+            self.neustart_bei = time.monotonic() + 1.0
+            r["neustart"] = True
+            r["entwurf"] = True
+            return r
         try:
             if existiert(cfg.CONFIG_FILE) and self.quelle == "device":
                 with open(cfg.CONFIG_FILE) as f:
@@ -786,14 +803,43 @@ class App:
                     self.rumble.not_aus()
                     self.rumble.step()
                 self.leds.aus()
-                if self.nvm_beim_neustart:
+                if self.nvm_beim_neustart or self.entwurf_beim_neustart:
                     if self.web.aktiv:
                         self.web.beenden()      # erst WLAN aus, dann Flash
                     for i, v in self.nvm_beim_neustart.items():
                         merker.setzen(i, v)
+                    if self.entwurf_beim_neustart:
+                        merker.entwurf_schreiben(self.entwurf_beim_neustart)
                 microcontroller.reset()
 
             self.bestaetigen(now)
+
+
+def entwurf_anwenden():
+    """Eine im NVM wartende Belegung (siehe config_speichern) als device.json
+    schreiben. Klappt das nicht, bleibt sie im NVM und gilt weiter -
+    boot.py hat das Geraet ja schon mit ihr angemeldet."""
+    if merker.lesen(merker.RUECKFALL) == merker.R_MAGIC:
+        return          # erst den Rueckfall erledigen, Entwurf beim naechsten Start
+    e = merker.entwurf_lesen()
+    if not e:
+        return
+    try:
+        if existiert(cfg.CONFIG_FILE):
+            with open(cfg.CONFIG_FILE) as f:
+                alt = f.read()
+            with open(cfg.BACKUP_FILE, "w") as f:
+                f.write(alt)
+        with open(cfg.CONFIG_FILE, "w") as f:
+            f.write(e)
+        with open(cfg.PENDING_FILE, "w") as f:
+            f.write("0")
+    except OSError as ex:
+        print("Neue Belegung wartet weiter im NVM:", ex)
+        return
+    merker.setzen(merker.FEHLSTARTS, 0)
+    merker.entwurf_loeschen()
+    print("Neue Belegung aus dem NVM gespeichert")
 
 
 def rueckfall_anwenden():
@@ -818,6 +864,7 @@ def rueckfall_anwenden():
 
 def start():
     try:
+        entwurf_anwenden()
         rueckfall_anwenden()
         App().laufen()
     except Exception as e:

@@ -61,3 +61,54 @@ def wartung():
         return
     import microcontroller
     microcontroller.reset()
+
+
+# --- Entwurf: eine Belegung, die gespeichert werden soll ---------------------
+#
+# Ist das Laufwerk CIRCUITPY fuer den PC freigegeben (Einrichtung, Wartung,
+# oder nach dem Kopieren noch kein echter Neustart), kann das Geraet keine
+# Datei schreiben. Die neue Belegung wandert dann hierher, das Geraet startet
+# neu, boot.py meldet sich schon mit ihr an und sperrt das Laufwerk, und
+# code.py schreibt sie als device.json.
+#
+# Ab Byte 16:  "UGCJ" + Laenge (2 Byte) + JSON (UTF-8)
+
+E_START = 16
+E_MAGIC = b"UGCJ"
+
+
+def entwurf_platz():
+    n = _nvm()
+    return 0 if n is None else len(n) - E_START - 6
+
+
+def entwurf_schreiben(text):
+    n = _nvm()
+    d = text.encode("utf-8") if isinstance(text, str) else bytes(text)
+    if n is None or len(d) > entwurf_platz():
+        return False
+    k = len(d)
+    # Ein Slice = ein Schreibvorgang auf den Flash
+    n[E_START:E_START + 6 + k] = E_MAGIC + bytes((k >> 8, k & 255)) + d
+    return True
+
+
+def entwurf_lesen():
+    n = _nvm()
+    if n is None or len(n) < E_START + 6:
+        return None
+    if bytes(n[E_START:E_START + 4]) != E_MAGIC:
+        return None
+    k = (n[E_START + 4] << 8) | n[E_START + 5]
+    if k > entwurf_platz():
+        return None
+    try:
+        return bytes(n[E_START + 6:E_START + 6 + k]).decode("utf-8")
+    except UnicodeError:
+        return None
+
+
+def entwurf_loeschen():
+    n = _nvm()
+    if n is not None and len(n) > E_START and n[E_START] != 0:
+        n[E_START] = 0

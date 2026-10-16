@@ -156,6 +156,11 @@ Speicher.
   Rumble-Motoren.
 - **Wartungsmodus:** Konfigurationstaster beim Einstecken gedrückt halten → `CIRCUITPY`
   bleibt als Laufwerk sichtbar, dafür kann das Gerät nicht speichern.
+- **Speichern bei sichtbarem Laufwerk:** Ist `CIRCUITPY` gerade für den PC freigegeben
+  (Wartung, Einrichtung oder nach dem Kopieren noch kein echter Neustart), wartet die
+  neue Belegung im NVM. Das Gerät startet neu, meldet sich gleich mit ihr an und
+  schreibt sie als `device.json`. Dafür braucht die neue Belegung einen
+  Konfigurationstaster oder eine Tastenkombination.
 - **Tastenkombination statt Konfigurationstaster:** unter *Belegung* →
   *Tastenkombination* Buttonnummern eintragen (z. B. `1, 2`), in `device.json`:
   `"config_combo": {"buttons": [1, 2], "hold": 3}`. Alle gemeinsam `hold` Sekunden
