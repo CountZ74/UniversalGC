@@ -805,21 +805,24 @@ def test_entwurf_im_nvm():
 def test_ble_drosselt():
     import ble_hid
     gesendet = []
-    v = types.SimpleNamespace(connection_interval=30.0)
+
+    class Verbindung:
+        @property
+        def connection_interval(self):
+            raise AssertionError("connection_interval darf nicht gelesen werden")
+
     b = ble_hid.BleHid({"ble": {"enabled": True}}, b"", 4)
-    b.radio = types.SimpleNamespace(connected=True, advertising=False, connections=[v])
+    b.radio = types.SimpleNamespace(connected=True, advertising=False,
+                                    connections=[Verbindung()])
     b.geraet = types.SimpleNamespace(send_report=lambda r: gesendet.append(bytes(r)))
     b.schritt(100.0)
-    check("BLE: 7,5 ms erbeten", v.connection_interval == 7.5)
-    v.connection_interval = 30.0              # Host bleibt bei 30 ms
-    b.schritt(100.3)
-    check("BLE: tatsaechliches Intervall uebernommen", abs(b.abstand - 0.030) < 1e-9)
+    check("BLE: verbunden erkannt, Intervall nicht angefasst", b.verb)
     b.gesendet = 0.0
     for i in range(5):
         b.senden(bytes([i]))
     check("BLE: Flut wird gedrosselt", gesendet == [bytes([0])])
-    b.gesendet = 100.3
-    b.schritt(100.34)
+    b.gesendet = 100.0
+    b.schritt(100.02)
     check("BLE: danach nur der neueste Report", gesendet == [bytes([0]), bytes([4])])
 
 

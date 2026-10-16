@@ -14,15 +14,19 @@
 # Braucht lib/adafruit_ble.
 #
 # Tempo: Per Funk geht ein Report nur einmal je Verbindungsintervall raus
-# (Linux/Windows waehlen gern 30-50 ms). Wer schneller sendet, fuellt nur die
+# (Linux/Windows waehlen gern 15-50 ms). Wer schneller sendet, fuellt nur die
 # Warteschlange des Funkstacks - jeder Tastendruck steht dann hinter alten
 # Achsenwerten an und kommt spuerbar spaet. Deshalb:
-#   - nach dem Verbinden 7,5 ms Intervall erbitten (das kleinste erlaubte),
-#   - hoechstens einen Report je Intervall senden, immer nur den neuesten,
+#   - hoechstens einen Report je ABSTAND senden, immer nur den neuesten,
 #   - den Verbindungsstatus nicht in jeder Runde abfragen.
+# Das Intervall wird NICHT angefasst: Connection.connection_interval wartet
+# beim Lesen, bis eine angefragte Aenderung ausgehandelt ist - antwortet der
+# Host nie (so unter Linux am ESP32-S3 erlebt), steht das ganze Geraet.
+# Kuerzere Intervalle stellt man am PC ein (siehe README).
 
 import time
 
+ABSTAND = 0.015   # s zwischen zwei Reports per Funk
 LANGSAM = 0.02    # s - laengere Funkaufrufe werden auf der Konsole gemeldet
 
 
@@ -47,7 +51,7 @@ class BleHid:
         self.pausiert = False
         self.verb = False          # zuletzt geprueft: verbunden?
         self.pruefen_ab = 0.0
-        self.abstand = 0.0075      # s zwischen zwei Reports (Verbindungsintervall)
+        self.abstand = ABSTAND
         self.gesendet = 0.0
         self.offen = None          # neuester, noch nicht gesendeter Report
         self.letzter = None
@@ -94,29 +98,6 @@ class BleHid:
     def verbunden(self):
         return self.radio is not None and self.verb
 
-    def _intervall(self, erbitten):
-        """Kurzes Verbindungsintervall erbitten und das tatsaechliche merken
-        (die Aushandlung dauert, deshalb wird es spaeter erneut gelesen)."""
-        try:
-            for v in self.radio.connections:
-                if erbitten:
-                    t0 = time.monotonic()
-                    try:
-                        v.connection_interval = 7.5
-                    except Exception as e:
-                        print("BLE: Intervall nicht einstellbar:", e)
-                    _dauer("Intervall setzen", t0)
-                t0 = time.monotonic()
-                ms = v.connection_interval
-                _dauer("Intervall lesen", t0)
-                if ms:
-                    neu = max(0.0075, ms / 1000.0)
-                    if neu != self.abstand:
-                        print("BLE: Verbindungsintervall %.1f ms" % ms)
-                    self.abstand = neu
-        except Exception as e:
-            print("BLE: Intervall:", e)
-
     def schritt(self, now=None):
         """Verbindung pruefen (alle 0,25 s), nach Abbruch wieder werben,
         zurueckgehaltenen Report senden."""
@@ -133,10 +114,8 @@ class BleHid:
                 _dauer("connected", t0)
                 if self.verb != war:
                     print("BLE:", "verbunden" if self.verb else "getrennt")
-                if self.verb:
-                    self._intervall(not war)
-                    if not war:
-                        self.offen = self.letzter    # Stand nach dem Verbinden
+                if self.verb and not war:
+                    self.offen = self.letzter        # Stand nach dem Verbinden
                 if not self.verb and not self.radio.advertising:
                     self.radio.start_advertising(self.adv)
             except Exception as e:

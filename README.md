@@ -52,6 +52,11 @@ Spiel danach neu zuordnen.
 | ESP32 ohne Zusatz, ESP32-C3 | nein | ja | ungeeignet |
 
 Beim ESP32-S3 beachten:
+- Bluetooth-Verzögerung bestimmt der PC über das Verbindungsintervall (Linux: oft
+  30–50 ms). Kürzer unter Linux, gilt bis zum Neustart, danach neu verbinden:
+  `sudo sh -c 'echo 6 > /sys/kernel/debug/bluetooth/hci0/conn_min_interval'`
+  (6 × 1,25 ms = 7,5 ms). Das Gerät fragt das selbst nicht an – CircuitPython hängt
+  dabei, wenn der PC nicht antwortet.
 - Der Web-Installer von circuitpython.org fragt nach dem Heim-WLAN und schreibt es in
   `settings.toml`. **Diese Zeilen (`CIRCUITPY_WIFI_SSID`, `CIRCUITPY_WIFI_PASSWORD`,
   `CIRCUITPY_WEB_API_PASSWORD`) auskommentieren** – sonst verbindet sich CircuitPython
