@@ -23,6 +23,15 @@
 
 import time
 
+LANGSAM = 0.02    # s - laengere Funkaufrufe werden auf der Konsole gemeldet
+
+
+def _dauer(name, t0):
+    d = time.monotonic() - t0
+    if d > LANGSAM:
+        print("BLE: %s dauerte %d ms" % (name, int(d * 1000)))
+
+
 APPEARANCE = {0x04: 0x03C3, 0x05: 0x03C4}    # Joystick, Gamepad
 
 
@@ -42,6 +51,7 @@ class BleHid:
         self.gesendet = 0.0
         self.offen = None          # neuester, noch nicht gesendeter Report
         self.letzter = None
+        self.fehler_gemeldet = False
 
     def start(self):
         b = self.c.get("ble") or {}
@@ -90,15 +100,22 @@ class BleHid:
         try:
             for v in self.radio.connections:
                 if erbitten:
+                    t0 = time.monotonic()
                     try:
                         v.connection_interval = 7.5
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print("BLE: Intervall nicht einstellbar:", e)
+                    _dauer("Intervall setzen", t0)
+                t0 = time.monotonic()
                 ms = v.connection_interval
+                _dauer("Intervall lesen", t0)
                 if ms:
-                    self.abstand = max(0.0075, ms / 1000.0)
-        except Exception:
-            pass
+                    neu = max(0.0075, ms / 1000.0)
+                    if neu != self.abstand:
+                        print("BLE: Verbindungsintervall %.1f ms" % ms)
+                    self.abstand = neu
+        except Exception as e:
+            print("BLE: Intervall:", e)
 
     def schritt(self, now=None):
         """Verbindung pruefen (alle 0,25 s), nach Abbruch wieder werben,
@@ -111,25 +128,33 @@ class BleHid:
             self.pruefen_ab = now + 0.25
             try:
                 war = self.verb
+                t0 = time.monotonic()
                 self.verb = self.radio.connected
+                _dauer("connected", t0)
+                if self.verb != war:
+                    print("BLE:", "verbunden" if self.verb else "getrennt")
                 if self.verb:
                     self._intervall(not war)
                     if not war:
                         self.offen = self.letzter    # Stand nach dem Verbinden
                 if not self.verb and not self.radio.advertising:
                     self.radio.start_advertising(self.adv)
-            except Exception:
-                pass
+            except Exception as e:
+                print("BLE:", e)
         if self.offen is not None and now - self.gesendet >= self.abstand:
             self._raus(now)
 
     def _raus(self, now):
         r, self.offen = self.offen, None
         self.gesendet = now
+        t0 = time.monotonic()
         try:
             self.geraet.send_report(r)
-        except Exception:
-            pass
+        except Exception as e:
+            if not self.fehler_gemeldet:     # nur einmal, sonst flutet es
+                self.fehler_gemeldet = True
+                print("BLE: send_report:", e)
+        _dauer("send_report", t0)
 
     def senden(self, report):
         if self.geraet is None or self.pausiert:
