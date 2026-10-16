@@ -36,6 +36,10 @@ class Web:
         # Funkchip behaelt dabei seinen Zustand. Ein AP aus dem vorigen Lauf
         # wird deshalb erst beendet, und jeder Schritt bekommt drei Versuche.
         try:
+            wifi.radio.enabled = True      # siehe funk_aus()
+        except Exception:
+            pass
+        try:
             wifi.radio.stop_ap()
         except Exception:
             pass
@@ -84,6 +88,8 @@ class Web:
             wifi.radio.stop_ap()
         except Exception as e:
             print("AP-Stopp:", e)
+        if self.app.ble.radio is not None:
+            funk_aus()
         self.sock = None
         self.aktiv = False
         self.stoppen = False
@@ -343,3 +349,14 @@ class Web:
                                  b"Connection: close\r\n\r\n")
         else:
             self.send(conn, "404 Not Found", "text/plain", "404")
+
+
+def funk_aus():
+    """WLAN-Funk ganz abschalten. Beim ESP32-S3 ist er nach dem Start an,
+    auch ohne Access Point - und WLAN und Bluetooth teilen sich die Antenne
+    im Zeitraster. Ohne Abschalten kommen Bluetooth-Reports spuerbar spaet."""
+    try:
+        import wifi
+        wifi.radio.enabled = False
+    except Exception as e:
+        print("WLAN-Funk nicht abschaltbar:", e)

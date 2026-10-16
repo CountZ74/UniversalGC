@@ -776,6 +776,10 @@ class App:
             print("Kein Konfigurationstaster - Access Point startet von selbst")
             self.wlan_umschalten()
 
+        if self.ble.radio is not None and not self.web.aktiv:
+            import web
+            web.funk_aus()      # sonst bremst das WLAN das Bluetooth aus
+
         while True:
             now = time.monotonic()
             self.schritt(now)
