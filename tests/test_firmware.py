@@ -802,6 +802,27 @@ def test_entwurf_im_nvm():
         del sys.modules["microcontroller"]
 
 
+def test_ble_drosselt():
+    import ble_hid
+    gesendet = []
+    v = types.SimpleNamespace(connection_interval=30.0)
+    b = ble_hid.BleHid({"ble": {"enabled": True}}, b"", 4)
+    b.radio = types.SimpleNamespace(connected=True, advertising=False, connections=[v])
+    b.geraet = types.SimpleNamespace(send_report=lambda r: gesendet.append(bytes(r)))
+    b.schritt(100.0)
+    check("BLE: 7,5 ms erbeten", v.connection_interval == 7.5)
+    v.connection_interval = 30.0              # Host bleibt bei 30 ms
+    b.schritt(100.3)
+    check("BLE: tatsaechliches Intervall uebernommen", abs(b.abstand - 0.030) < 1e-9)
+    b.gesendet = 0.0
+    for i in range(5):
+        b.senden(bytes([i]))
+    check("BLE: Flut wird gedrosselt", gesendet == [bytes([0])])
+    b.gesendet = 100.3
+    b.schritt(100.34)
+    check("BLE: danach nur der neueste Report", gesendet == [bytes([0]), bytes([4])])
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])

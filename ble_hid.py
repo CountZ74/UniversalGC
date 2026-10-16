@@ -12,6 +12,16 @@
 # Weboberflaeche laeuft, wird Bluetooth deshalb pausiert.
 #
 # Braucht lib/adafruit_ble.
+#
+# Tempo: Per Funk geht ein Report nur einmal je Verbindungsintervall raus
+# (Linux/Windows waehlen gern 30-50 ms). Wer schneller sendet, fuellt nur die
+# Warteschlange des Funkstacks - jeder Tastendruck steht dann hinter alten
+# Achsenwerten an und kommt spuerbar spaet. Deshalb:
+#   - nach dem Verbinden 7,5 ms Intervall erbitten (das kleinste erlaubte),
+#   - hoechstens einen Report je Intervall senden, immer nur den neuesten,
+#   - den Verbindungsstatus nicht in jeder Runde abfragen.
+
+import time
 
 APPEARANCE = {0x04: 0x03C3, 0x05: 0x03C4}    # Joystick, Gamepad
 
@@ -26,6 +36,12 @@ class BleHid:
         self.geraet = None
         self.grund = ""
         self.pausiert = False
+        self.verb = False          # zuletzt geprueft: verbunden?
+        self.pruefen_ab = 0.0
+        self.abstand = 0.0075      # s zwischen zwei Reports (Verbindungsintervall)
+        self.gesendet = 0.0
+        self.offen = None          # neuester, noch nicht gesendeter Report
+        self.letzter = None
 
     def start(self):
         b = self.c.get("ble") or {}
@@ -66,28 +82,65 @@ class BleHid:
 
     @property
     def verbunden(self):
-        try:
-            return self.radio is not None and self.radio.connected
-        except Exception:
-            return False
+        return self.radio is not None and self.verb
 
-    def schritt(self):
-        """Nach einem Verbindungsabbruch wieder werben."""
+    def _intervall(self, erbitten):
+        """Kurzes Verbindungsintervall erbitten und das tatsaechliche merken
+        (die Aushandlung dauert, deshalb wird es spaeter erneut gelesen)."""
+        try:
+            for v in self.radio.connections:
+                if erbitten:
+                    try:
+                        v.connection_interval = 7.5
+                    except Exception:
+                        pass
+                ms = v.connection_interval
+                if ms:
+                    self.abstand = max(0.0075, ms / 1000.0)
+        except Exception:
+            pass
+
+    def schritt(self, now=None):
+        """Verbindung pruefen (alle 0,25 s), nach Abbruch wieder werben,
+        zurueckgehaltenen Report senden."""
         if self.radio is None or self.pausiert:
             return
+        if now is None:
+            now = time.monotonic()
+        if now >= self.pruefen_ab:
+            self.pruefen_ab = now + 0.25
+            try:
+                war = self.verb
+                self.verb = self.radio.connected
+                if self.verb:
+                    self._intervall(not war)
+                    if not war:
+                        self.offen = self.letzter    # Stand nach dem Verbinden
+                if not self.verb and not self.radio.advertising:
+                    self.radio.start_advertising(self.adv)
+            except Exception:
+                pass
+        if self.offen is not None and now - self.gesendet >= self.abstand:
+            self._raus(now)
+
+    def _raus(self, now):
+        r, self.offen = self.offen, None
+        self.gesendet = now
         try:
-            if not self.radio.connected and not self.radio.advertising:
-                self.radio.start_advertising(self.adv)
+            self.geraet.send_report(r)
         except Exception:
             pass
 
     def senden(self, report):
-        if self.geraet is None or self.pausiert or not self.verbunden:
+        if self.geraet is None or self.pausiert:
             return
-        try:
-            self.geraet.send_report(report)
-        except Exception:
-            pass
+        self.letzter = bytes(report)
+        if not self.verb:
+            return
+        self.offen = self.letzter
+        now = time.monotonic()
+        if now - self.gesendet >= self.abstand:
+            self._raus(now)
 
     def pause(self):
         if self.radio is None:
@@ -107,6 +160,8 @@ class BleHid:
         if self.radio is None:
             return
         self.pausiert = False
+        self.verb = False
+        self.pruefen_ab = 0.0
         self.schritt()
 
     def status(self):

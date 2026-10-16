@@ -405,7 +405,7 @@ class App:
         self.leds.update(self.ctx, now)
         self._status_led(now)
         if self.ble.radio is not None:
-            self.ble.schritt()
+            self.ble.schritt(now)
 
     def _senden(self):
         r = self.report
