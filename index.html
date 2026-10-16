@@ -249,6 +249,7 @@ async function init(){
   document.querySelector('[data-t=l]').classList.toggle('aus',!d.nb);
   bauStatus();bauAchsen();bauKTabs();bauLogik();bauLeds();bauRumble();bauForm();bauPresets();
   if(d.q==='default')tab('b');
+  entwurfAnbieten();
   poll();
 }
 
@@ -259,7 +260,8 @@ function bauStatus(){
     'eine Vorlage aus <b>presets/</b> als <b>device.json</b> auf das Laufwerk kopieren und neu einstecken. '+
     'Unter <b>Belegung</b> kann man die Vorlagen ansehen und prüfen; mit <b>JSON direkt bearbeiten</b> lässt sich der Inhalt kopieren.');
   if(I.q==='backup')f.unshift('device.json war nicht lesbar – es läuft die Sicherung.');
-  if(!I.fs&&I.q!=='default')f.unshift('Dateisystem schreibgeschützt (Wartungsmodus) – nichts wird gespeichert.');
+  if(!I.fs&&I.q!=='default')f.unshift('Dateisystem schreibgeschützt – das Laufwerk CIRCUITPY ist für den PC freigegeben (Wartungsmodus, oder nach dem Kopieren von Dateien noch kein echter Neustart). Nichts wird gespeichert.'+
+    (I.nh?' <button class="btn s k" onclick="neuStarten()">Jetzt neu starten</button>':''));
   $('hinw').innerHTML=f.length?'<div class="se">'+f.join('<br>')+'</div>':'';
   $('btns').innerHTML=I.bn.map((n,i)=>n?'<div class="lp"><span class="lamp" id="bl'+i+'"></span><span class="nr">'+(i+1)+'</span> '+esc(n)+'</div>':'').join('');
   $('bcount').textContent=I.nb+' Buttons im Report';
@@ -713,10 +715,38 @@ async function pruefen(){
 async function speichern(){
   const d=await post('/config',aufbereiten());
   if(!d){melde('cmsg',false,'Keine Antwort');return;}
+  if(!d.ok&&d.rw){
+    // Laufwerk gehoert gerade dem PC: Belegung im Browser merken, neu starten,
+    // danach wird sie wieder angeboten.
+    let gemerkt=false;try{localStorage.setItem(ENTWURF,JSON.stringify(K));gemerkt=true;}catch(e){}
+    melde('cmsg',false,'<b>Nicht gespeichert:</b> das Laufwerk CIRCUITPY ist gerade für den PC freigegeben – meist, weil nach dem Kopieren der Dateien noch kein echter Neustart war.<br>'+
+      (gemerkt?'Die Belegung ist im Browser gemerkt und wird nach dem Neustart angeboten. ':'Vorher <b>JSON direkt bearbeiten</b> öffnen und den Inhalt kopieren! ')+
+      '<button class="btn s k" onclick="neuStarten()">Jetzt neu starten</button>');
+    return;
+  }
   if(!d.ok){melde('cmsg',false,'<b>Nicht gespeichert:</b><br>'+d.f.map(esc).join('<br>'));return;}
+  try{localStorage.removeItem(ENTWURF);}catch(e){}
   melde('cmsg',true,'Gespeichert ('+esc(d.info)+'). Das Gerät startet neu – in ein paar Sekunden wieder mit dem WLAN verbinden. Im Spiel Buttons/Achsen prüfen.');
   setTimeout(()=>{document.body.innerHTML='<h1>Neustart …</h1><p style="color:#8ab;margin-top:10px">Das Gerät startet mit der neuen Belegung. Den Access Point mit dem Konfigurationstaster wieder einschalten.</p>';},1500);
 }
+const ENTWURF='ugc_entwurf';
+async function neuStarten(){
+  await api('/neustart');
+  document.body.innerHTML='<h1>Neustart …</h1><p style="color:#8ab;margin-top:10px">Dabei weder Konfigurationstaster noch Tastenkombination halten. '+
+    'Danach den Access Point wieder einschalten und diese Seite neu laden.</p>';
+}
+function entwurfAnbieten(){
+  let t=null;try{t=localStorage.getItem(ENTWURF);}catch(e){}
+  if(!t)return;
+  tab('b');
+  melde('cmsg',true,'Es gibt eine noch nicht gespeicherte Belegung vom letzten Versuch. '+
+    '<button class="btn s" onclick="entwurfLaden()">Übernehmen</button> <button class="btn s k" onclick="entwurfWeg()">Verwerfen</button>');
+}
+function entwurfLaden(){
+  try{K=JSON.parse(localStorage.getItem(ENTWURF));}catch(e){melde('cmsg',false,'Entwurf nicht lesbar');return;}
+  bauForm();melde('cmsg',true,'Übernommen – jetzt <b>Speichern & Neustart</b>.');
+}
+function entwurfWeg(){try{localStorage.removeItem(ENTWURF);}catch(e){}melde('cmsg',true,'Verworfen.');}
 function jsonUmschalten(){const w=$('jsonw');const an=w.style.display==='none';w.style.display=an?'':'none';if(an)$('json').value=JSON.stringify(K,null,1);}
 function jsonUebernehmen(){try{K=JSON.parse($('json').value);bauForm();melde('cmsg',true,'Übernommen – noch nicht gespeichert.');}
   catch(e){melde('cmsg',false,'JSON fehlerhaft: '+esc(e.message));}}

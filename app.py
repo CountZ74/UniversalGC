@@ -584,7 +584,12 @@ class App:
         if not r["ok"]:
             return r
         if not self.schreibbar:
-            return {"ok": False, "f": ["Dateisystem schreibgeschuetzt (Wartungsmodus)"]}
+            # Typischer Fall: Dateien wurden auf CIRCUITPY kopiert. Danach
+            # startet CircuitPython nur code.py neu, boot.py laeuft erst beim
+            # naechsten echten Neustart - bis dahin gehoert das Laufwerk dem PC.
+            return {"ok": False, "rw": self.neustart_hilft(),
+                    "f": ["Dateisystem schreibgeschuetzt: das Laufwerk CIRCUITPY "
+                          "ist fuer den PC freigegeben"]}
         neu = cfg.normalize(json.loads(text))
         try:
             if existiert(cfg.CONFIG_FILE) and self.quelle == "device":
@@ -602,6 +607,12 @@ class App:
         self.neustart_bei = time.monotonic() + 1.0
         r["neustart"] = True
         return r
+
+    def neustart_hilft(self):
+        """Gibt ein normaler Neustart das Dateisystem frei? Nicht, wenn
+        boot.py wieder in die Einrichtung ginge (keine device.json, weder
+        Taster noch Kombination)."""
+        return self.quelle != "default" and cfg.zugang(self.c)
 
     def wartung_anfordern(self):
         """Beim naechsten Start bleibt CIRCUITPY sichtbar (einmalig).
@@ -653,7 +664,7 @@ class App:
             "rn": [k.get("name", "?") for k in rb.kanaele] if rb else [],
             "rt": [k.get("tele", "") for k in rb.kanaele] if rb else [],
             "rc": rb.cfg if rb else [], "rd": bool(rb and rb.da),
-            "f": self.fehler, "fs": self.schreibbar,
+            "f": self.fehler, "fs": self.schreibbar, "nh": self.neustart_hilft(),
         }
 
     def data_json(self):
