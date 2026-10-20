@@ -257,6 +257,14 @@ class App:
         self.letzte_ax = [-1] * len(self.achsen)
         self.schwelle = c["options"].get("axis_threshold", 0)
         self.hid_im_wlan = c["options"].get("hid_in_wifi", True)
+        # send_report wartet bis zu 2 s auf den PC, wenn keiner am USB haengt
+        # (Akku/Powerbank) - jeder Bluetooth-Report kaeme dann so spaet.
+        try:
+            import supervisor
+            self._rt = supervisor.runtime
+            self._rt.usb_connected
+        except (ImportError, AttributeError):
+            self._rt = None
 
         from ble_hid import BleHid
         self.ble = BleHid(c, cfg.descriptor(c), self.usage)
@@ -431,7 +439,7 @@ class App:
             r[nb + 2 * i + 1] = (v >> 8) & 0xFF
             self.letzte_ax[i] = v
         self.letzter[:] = r
-        if self.hid is not None:
+        if self.hid is not None and (self._rt is None or self._rt.usb_connected):
             try:
                 self.hid.send_report(r, cfg.REPORT_ID)
             except (OSError, ValueError):
