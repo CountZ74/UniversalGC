@@ -140,7 +140,7 @@ def reset():
 mod("microcontroller", pin=mc_pin, reset=reset, nvm=nvm)
 USB = {"daten": False, "laufwerk": True, "midi": True, "hid": False}
 mod("supervisor", set_usb_identification=lambda **kw: print("USB:", kw),
-    runtime=types.SimpleNamespace(serial_bytes_available=0))
+    runtime=types.SimpleNamespace(serial_bytes_available=0, usb_connected=True))
 mod("storage", disable_usb_drive=lambda: USB.update(laufwerk=False),
     remount=lambda *a, **k: None)
 mod("usb_midi", disable=lambda: USB.update(midi=False))

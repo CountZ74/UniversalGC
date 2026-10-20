@@ -826,6 +826,25 @@ def test_ble_drosselt():
     check("BLE: danach nur der neueste Report", gesendet == [bytes([0]), bytes([4])])
 
 
+def test_ohne_usb_nur_bluetooth():
+    import app
+    usb, ble = [], []
+    a = types.SimpleNamespace(
+        report=bytearray(3), letzter=bytearray(3), n_btn=8, ax_hid=[0],
+        letzte_ax=[0], schwelle=0, lg={"suppress": []},
+        ein=types.SimpleNamespace(aus=bytearray(8)),
+        hid=types.SimpleNamespace(send_report=lambda r, i: usb.append(bytes(r))),
+        ble=types.SimpleNamespace(senden=lambda r: ble.append(bytes(r))),
+        _rt=types.SimpleNamespace(usb_connected=False))
+    a.ein.aus[0] = 1
+    app.App._senden(a)
+    check("Ohne USB-Host: kein send_report an USB (wartet sonst 2 s)", usb == [] and len(ble) == 1)
+    a._rt.usb_connected = True
+    a.ein.aus[1] = 1
+    app.App._senden(a)
+    check("Mit USB-Host: an beide", len(usb) == 1 and len(ble) == 2)
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])
