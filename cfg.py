@@ -395,8 +395,11 @@ def pins_belegt(c):
         for k in ("data", "clock", "latch"):
             dazu(s.get(k), "Schieberegister %d %s" % (i + 1, k))
     for i, e in enumerate(c["encoders"]):
-        dazu(e.get("a"), "Encoder %d A" % (i + 1))
-        dazu(e.get("b"), "Encoder %d B" % (i + 1))
+        if e.get("type") == "as5600":
+            dazu(e.get("pin"), "Encoder %d (AS5600)" % (i + 1))
+        else:
+            dazu(e.get("a"), "Encoder %d A" % (i + 1))
+            dazu(e.get("b"), "Encoder %d B" % (i + 1))
     for i, a in enumerate(c["axes"]):
         t = a.get("type")
         if t == "hx711":
@@ -475,7 +478,18 @@ def validate(c, pin_id=None, analog_ok=None):
             f.append("HID-Achse %s %dx vergeben" % (u, n))
 
     for i, e in enumerate(c["encoders"]):
-        if not (e.get("a") and e.get("b")):
+        if e.get("type") == "as5600":
+            if not e.get("pin"):
+                f.append("Encoder %d (AS5600): kein Pin" % (i + 1))
+            elif analog_ok is not None and not analog_ok(e["pin"]):
+                f.append("Encoder %d: %s ist kein Analogeingang" % (i + 1, e["pin"]))
+            try:
+                r = int(e.get("detents", 20))
+            except (TypeError, ValueError):
+                r = 0
+            if not 2 <= r <= 64:
+                f.append("Encoder %d: Rasten je Umdrehung 2 bis 64" % (i + 1))
+        elif not (e.get("a") and e.get("b")):
             f.append("Encoder %d braucht A und B" % (i + 1))
     for i, b in enumerate(c["buttons"]):
         if not b.get("pin"):

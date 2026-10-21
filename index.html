@@ -636,9 +636,13 @@ function bauForm(){
   h+='<button class="btn s" style="width:100%" onclick="dazu(\'shift\',{data:\'\',clock:\'\',latch:\'\',count:8})">+ Schieberegister</button></div>';
 
   h+='<div class="a"><b>Encoder</b> <span class="sub">je Raste ein Tastendruck rechts/links</span>';
-  K.encoders.forEach((e,i)=>{h+='<div class="item">'+kopf('Encoder '+(i+1),'encoders',i)+
-    '<div class="row c3">'+pinF('encoders.'+i+'.a','A')+pinF('encoders.'+i+'.b','B')+txtF('encoders.'+i+'.name','Name')+'</div>'+
-    '<div class="row c4">'+numF('encoders.'+i+'.btn','erste Button-Nr.')+selF('encoders.'+i+'.divisor','Flanken/Raste',[1,2,4])+numF('encoders.'+i+'.pulse_ms','Impuls ms')+chkF('encoders.'+i+'.reverse','umkehren')+'</div></div>';});
+  K.encoders.forEach((e,i)=>{const p='encoders.'+i+'.',w=e.type==='as5600';
+    h+='<div class="item">'+kopf('Encoder '+(i+1),'encoders',i)+
+    '<div class="row c3">'+selF(p+'type','Typ',[['quad','Drehencoder (A/B)'],['as5600','AS5600 + Rastenknopf']])+txtF(p+'name','Name')+numF(p+'btn','erste Button-Nr.')+'</div>'+
+    (w?'<div class="row c4">'+pinF(p+'pin','Pin (AS5600 OUT)',true)+numF(p+'detents','Rasten je Umdrehung')+numF(p+'pulse_ms','Impuls ms')+chkF(p+'reverse','umkehren')+'</div>'+
+       '<div class="sub">Beim Einschalten muss der Knopf in einer Raste stehen. Rastenzahl genau wie am Knopf, sonst verschiebt sich die Zählung.</div>'
+      :'<div class="row c4">'+pinF(p+'a','A')+pinF(p+'b','B')+selF(p+'divisor','Flanken/Raste',[1,2,4])+numF(p+'pulse_ms','Impuls ms')+'</div>'+chkF(p+'reverse','umkehren'))+
+    '</div>';});
   h+='<button class="btn s" style="width:100%" onclick="dazu(\'encoders\',{a:\'\',b:\'\',divisor:4,pulse_ms:30})">+ Encoder</button></div>';
 
   h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>'+

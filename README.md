@@ -182,6 +182,11 @@ Speicher.
   liegen 50 % in der Mitte, die Totzone wirkt um die Mitte – für Drehregler mit
   Raste, Trimmung oder Hall-Sticks. Kalibrieren: Mitte setzen, dann bis zu beiden
   Anschlägen drehen.
+- **AS5600 als Encoder:** Statt eines Drehencoders (Pins A und B) geht ein AS5600 hinter
+  einem Knopf mit Rasten, z. B. gedruckt: 1 Analogpin (`OUT`), berührungslos, prellt
+  nicht. Unter *Belegung → Encoder* Typ „AS5600 + Rastenknopf“ und die Rastenzahl je
+  Umdrehung eintragen. Wie beim Drehencoder gibt jede Raste einen Impuls auf „rechts“
+  bzw. „links“. Beim Einschalten muss der Knopf in einer Raste stehen.
 - **Buttonnummern festhalten:** Jede Quelle (Taster, Matrix, Schieberegister, Encoder,
   Logik) kann ihre erste Nummer mit `btn` festlegen. So bleiben die Zuordnungen im Spiel
   gültig, wenn später etwas dazukommt.

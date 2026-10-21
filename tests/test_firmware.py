@@ -536,6 +536,72 @@ def test_eingaben_modi():
     check("toggle: zweiter Druck schaltet aus", e.aus[2] == 0)
 
 
+def test_winkel_encoder():
+    r = eingaben.WinkelRaster(20)          # 3276,8 Rohwerte je Raste
+    r.update(60000)                        # Start in einer Raste
+    check("AS5600-Encoder: Start = 0", r.k == 0)
+    for raw in range(60000, 60000 + 3277 + 1, 400):
+        r.update(raw % 65536)
+    r.update((60000 + 3277) % 65536)
+    check("AS5600-Encoder: eine Raste ueber den Nulldurchgang", r.k == 1)
+    for d in (1700, 1600, 1700, 1600, 1700):     # zappelt zwischen zwei Rasten
+        r.update((60000 + 3277 + d) % 65536)
+    check("AS5600-Encoder: Hysterese, kein Zappeln", r.k == 1)
+    raw = (60000 + 3277) % 65536
+    for _ in range(3 * 20):                 # drei Umdrehungen rueckwaerts
+        for _ in range(4):
+            raw = (raw - 819) % 65536
+            r.update(raw)
+    check("AS5600-Encoder: endlos drehbar (%d)" % r.k, r.k == 1 - 60)
+
+    alt = sys.modules.get("analogio")
+    werte = [10000]
+
+    class Adc:
+        @property
+        def value(self):
+            return werte[0]
+
+    sys.modules["analogio"] = types.SimpleNamespace(AnalogIn=lambda pin: Adc())
+    try:
+        c = cfg.normalize({"encoders": [{"type": "as5600", "pin": "GP26",
+                                         "detents": 20, "pulse_ms": 30}]})
+        bl, n, _ = cfg.button_layout(c)
+        e = eingaben.Eingaben(c, bl, n, lambda x: x)
+        check("AS5600-Encoder: angelegt %s" % e.fehler, not e.fehler and e.encoder)
+        rechts = []
+        t = 0.0
+        for raw in (11000, 12000, 13300, 13300):     # eine Raste rechts
+            werte[0] = raw
+            t += 0.01
+            e.update(t)
+            rechts.append(e.aus[bl[("encoder", 0)]])
+        for _ in range(5):
+            t += 0.01
+            e.update(t)
+            rechts.append(e.aus[bl[("encoder", 0)]])
+        check("AS5600-Encoder: Raste rechts gibt einen Impuls", sum(rechts) >= 1
+              and e.aus[bl[("encoder", 0)] + 1] == 0)
+    finally:
+        if alt is None:
+            del sys.modules["analogio"]
+        else:
+            sys.modules["analogio"] = alt
+
+    p = pins_fuer("rp2040")
+    ok = cfg.normalize({"config_pin": "GP15",
+                        "encoders": [{"type": "as5600", "pin": "GP26", "detents": 24}]})
+    check("AS5600-Encoder: gueltig %s" % cfg.validate(ok, p.pin_id, p.analog_ok),
+          not cfg.validate(ok, p.pin_id, p.analog_ok))
+    falsch = cfg.normalize({"config_pin": "GP15",
+                            "encoders": [{"type": "as5600", "pin": "GP5", "detents": 99}]})
+    f = cfg.validate(falsch, p.pin_id, p.analog_ok)
+    check("AS5600-Encoder: Analogpin und Rastenzahl geprueft",
+          any("Analog" in x for x in f) and any("Rasten" in x for x in f))
+    check("AS5600-Encoder: Pin gilt als belegt",
+          ("GP26", "Encoder 1 (AS5600)") in cfg.pins_belegt(ok))
+
+
 def test_telemetrie():
     p = FakePort()
     t = Telemetrie(p, 2.0)

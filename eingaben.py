@@ -14,6 +14,8 @@
 #           toggle  jeder Druck schaltet um - ein Taster als Schalter
 #
 # Encoder erzeugen je Raste einen Impuls auf ihrem Rechts- oder Linksbutton.
+# Statt eines Quadratur-Encoders (2 Pins) geht auch ein AS5600 hinter einem
+# Drehknopf mit Rasten (1 Analogpin, beruehrungslos, prellt nicht).
 # Schnelles Drehen wird gepuffert und nacheinander ausgegeben, damit das Spiel
 # jede Raste mitbekommt.
 
@@ -65,6 +67,62 @@ class Pulser:
             self.stau -= self.an
             self.bis = now + self.puls_s
         return self.an > 0, self.an < 0
+
+
+class WinkelRaster:
+    """Winkel eines AS5600 (0..65535 = eine Umdrehung) in Rasten zaehlen.
+
+    Gezaehlt wird ab dem ersten Wert; der Knopf steht beim Start in einer
+    Raste, also liegen alle Rasten bei ganzen Vielfachen von 360/rasten
+    Grad davon. Eine Raste zaehlt erst, wenn der Winkel um hyst (Anteil einer
+    Raste) ueber die Haelfte hinaus ist - so zappelt nichts, wenn der Knopf
+    zwischen zwei Rasten steht. Der Nulldurchgang des Sensors stoert nicht,
+    der Knopf darf sich endlos drehen.
+    """
+
+    def __init__(self, rasten=20, hyst=0.15):
+        self.schritt = 65536.0 / max(2, int(rasten))
+        self.hyst = hyst
+        self.letzt = None
+        self.s = 0.0           # Weg seit dem Start in Rohwerten
+        self.k = 0             # gezaehlte Rasten
+
+    def update(self, raw):
+        if self.letzt is None:
+            self.letzt = raw
+            return self.k
+        d = raw - self.letzt
+        if d > 32767:
+            d -= 65536
+        elif d < -32768:
+            d += 65536
+        self.letzt = raw
+        self.s += d
+        x = self.s / self.schritt
+        while x >= self.k + 0.5 + self.hyst:
+            self.k += 1
+        while x <= self.k - 0.5 - self.hyst:
+            self.k -= 1
+        return self.k
+
+
+class WinkelEncoder:
+    """AS5600 am Analogpin mit der Schnittstelle von rotaryio (position)."""
+
+    def __init__(self, adc, rasten):
+        import kalib
+        self._mittel = kalib.kreis_mittel
+        self.adc = adc
+        self.raster = WinkelRaster(rasten)
+        self._lesen()                  # Startwinkel = erste Raste
+
+    def _lesen(self):
+        a = self.adc
+        return self.raster.update(self._mittel([a.value for _ in range(4)]))
+
+    @property
+    def position(self):
+        return self._lesen()
 
 
 class Modi:
@@ -159,9 +217,14 @@ class Eingaben:
 
         for i, e in enumerate(c["encoders"]):
             try:
-                import rotaryio
-                enc = rotaryio.IncrementalEncoder(pin(e["a"]), pin(e["b"]),
-                                                  divisor=int(e.get("divisor", 4)))
+                if e.get("type") == "as5600":
+                    import analogio
+                    enc = WinkelEncoder(analogio.AnalogIn(pin(e["pin"])),
+                                        int(e.get("detents", 20)))
+                else:
+                    import rotaryio
+                    enc = rotaryio.IncrementalEncoder(pin(e["a"]), pin(e["b"]),
+                                                      divisor=int(e.get("divisor", 4)))
                 p = Pulser(e.get("pulse_ms", 30) / 1000.0)
                 bit = bloecke[("encoder", i)]
                 self.encoder.append([enc, p, bit, enc.position,
