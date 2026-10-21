@@ -274,7 +274,9 @@ class App:
         self.usb_nachholen = False
 
         from ble_hid import BleHid
-        self.ble = BleHid(c, cfg.descriptor(c), self.usage)
+        self.rid = cfg.report_id(c)
+        # Bluetooth immer mit Report-ID - so erwartet es adafruit_ble
+        self.ble = BleHid(c, cfg.descriptor(c, mit_id=True), self.usage)
         self.ble.start()
 
         from web import Web
@@ -468,7 +470,10 @@ class App:
 
     def _usb_senden(self, r, now):
         try:
-            self.hid.send_report(r, cfg.REPORT_ID)
+            if self.rid:
+                self.hid.send_report(r, self.rid)
+            else:
+                self.hid.send_report(r)
         except (OSError, ValueError):
             pass
         if time.monotonic() - now > self.USB_ZU_LANG:

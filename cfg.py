@@ -330,7 +330,14 @@ def _bloecke(usages):
     return out
 
 
-def descriptor(c):
+def report_id(c):
+    """Report-ID fuer USB. 0 = ohne (wie die alten Firmwares) - fuer
+    Programme, die die Reports selbst auslesen und sich am zusaetzlichen
+    ID-Byte verschlucken (options.report_id = false)."""
+    return REPORT_ID if c["options"].get("report_id", True) else 0
+
+
+def descriptor(c, mit_id=None):
     """HID-Report-Descriptor aus der Konfiguration bauen.
 
     Aufbau des Reports (ohne Report-ID, die setzt der Stack davor):
@@ -345,8 +352,9 @@ def descriptor(c):
         0x05, 0x01,              # Usage Page (Generic Desktop)
         0x09, geraet,            # Usage (Joystick / Gamepad)
         0xA1, 0x01,              # Collection (Application)
-        0x85, REPORT_ID,         #   Report ID
     ))
+    if mit_id or (mit_id is None and report_id(c)):
+        d.extend(bytes((0x85, REPORT_ID)))   # Report ID
     if n_btn:
         d.extend(bytes((
             0x05, 0x09,          #   Usage Page (Button)

@@ -169,6 +169,25 @@ def test_presets_descriptor():
     check("pedale: Joystick", usages[0] == 0x04)
 
 
+def test_ohne_report_id_wie_v21():
+    import re
+    alt = open(os.path.join(HIER, "alt", "buttonbox", "boot.py")).read()
+    block = alt[alt.index("GAMEPAD_REPORT_DESCRIPTOR"):]
+    block = block[block.index("(") + 1:block.index("\n)")]
+    v21 = bytes(int(x, 16) for x in re.findall(r"0x([0-9A-Fa-f]{2})",
+                                                "\n".join(l.split("#")[0] for l in block.splitlines())))
+    v21 = v21[:v21.index(0xC0) + 1]          # bis End Collection
+    c = preset("buttonbox")
+    c["options"]["report_id"] = False
+    check("ohne Report-ID: Descriptor byte-gleich mit Buttonbox v2.1",
+          cfg.descriptor(c) == v21)
+    check("ohne Report-ID: boot.py meldet ID 0", cfg.report_id(c) == 0)
+    check("Bluetooth behaelt die Report-ID",
+          bytes((0x85, cfg.REPORT_ID)) in cfg.descriptor(c, mit_id=True))
+    c["options"]["report_id"] = True
+    check("mit Report-ID: Standard", cfg.report_id(preset("buttonbox")) == cfg.REPORT_ID)
+
+
 def test_simulation_controls():
     c = cfg.normalize({"config_pin": "GP15", "axes": [
         {"type": "pot", "pin": "GP26", "usage": "accelerator"},
@@ -1018,6 +1037,7 @@ class _FakeApp:
         self.ble_rep = []
         self.ble = types.SimpleNamespace(senden=lambda r: self.ble_rep.append(bytes(r)))
         self._rt = types.SimpleNamespace(usb_connected=True)
+        self.rid = cfg.REPORT_ID
         self.usb_pause_bis, self.usb_nachholen = 0.0, False
         self.USB_ZU_LANG, self.USB_PAUSE = app.App.USB_ZU_LANG, app.App.USB_PAUSE
         self._usb_senden = lambda r, now: app.App._usb_senden(self, r, now)

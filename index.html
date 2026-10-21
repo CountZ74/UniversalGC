@@ -607,7 +607,8 @@ function bauForm(){
     '<div class="row c2">'+txtF('config_combo.buttons','oder Tastenkombination (Button-Nr., z. B. 1, 2)')+numF('config_combo.hold','gemeinsam halten s')+'</div>'+
     '<div class="row c3">'+txtF('wifi.ssid','WLAN-Name')+txtF('wifi.password','WLAN-Passwort')+txtF('ble.name','Bluetooth-Name')+'</div>'+
     '<div class="row c4">'+numF('options.debounce_ms','Entprellen ms')+numF('options.pulse_ms','Impuls ms')+numF('options.axis_threshold','Achs-Schwelle')+numF('options.axis_avg','Mittelung')+'</div>'+
-    chkF('options.hid_in_wifi','Eingaben auch bei aktivem WLAN senden')+'</div>';
+    chkF('options.hid_in_wifi','Eingaben auch bei aktivem WLAN senden')+
+    '<label class="f"><input type="checkbox" data-p="options.report_id" data-c="1"'+(hole('options.report_id')!==false?' checked':'')+'> USB-Report mit Report-ID (aus = wie die alten Firmwares, falls ein Spiel Phantom-Eingaben sieht)</label>'+'</div>';
 
   h+='<div class="a"><b>Taster</b> <span class="sub">direkt gegen GND</span>';
   K.buttons.forEach((b,i)=>{h+='<div class="item"><div class="row" style="grid-template-columns:1.1fr 1.4fr .7fr 1.2fr 22px">'+

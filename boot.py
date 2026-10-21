@@ -183,7 +183,7 @@ try:
         report_descriptor=desc,
         usage_page=0x01,                     # Generic Desktop
         usage=cfg.device_usage(c),           # muss zu code.py passen
-        report_ids=(cfg.REPORT_ID,),
+        report_ids=(cfg.report_id(c),),     # 0 = ohne Report-ID
         in_report_lengths=(laenge,),
         out_report_lengths=(0,),
     )
