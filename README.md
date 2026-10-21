@@ -43,6 +43,11 @@ läuft nachweislich. Zum Ausprobieren die HID-Achse im Browser umstellen, speich
 Spiel testen; bei Problemen zurückstellen. Wie bei jeder Änderung am Aufbau die Achsen im
 Spiel danach neu zuordnen.
 
+**Linux** kennt von den Simulation Controls nur Gas, Bremse, Lenkung, Schubhebel und
+Seitenruder. Kupplung, Fußbremse, Quer-/Höhenruder und Kollektiv lässt der Kernel ohne
+Meldung weg – die Achse fehlt dann einfach. Unter Linux die Kupplung deshalb als Rz oder
+Slider melden.
+
 ## Welcher Chip?
 
 | Board | USB-Joystick | Bluetooth | Einsatz |

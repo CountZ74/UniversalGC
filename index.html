@@ -555,10 +555,12 @@ async function kSave(){const b=$('sbtn');b.textContent='…';const d=await post(
 const USAGES=['x','y','z','rx','ry','rz','slider','dial','wheel'];
 /* Simulation Controls: beschreiben das Gerät treffender, werden aber nicht von
    jedem Spiel gleich zugeordnet - je Spiel testen, bei Problemen zurück auf Rx/Ry/Rz. */
-const SIM_USAGES=[['accelerator','Sim: Gas'],['brake','Sim: Bremse'],['clutch','Sim: Kupplung'],
+// Linux (hid-input) kennt von Page 0x02 nur Ruder, Throttle, Gas, Bremse und
+// Lenkung - die uebrigen verschwinden dort ohne Meldung.
+const SIM_USAGES=[['accelerator','Sim: Gas'],['brake','Sim: Bremse'],['clutch','Sim: Kupplung (nicht unter Linux)'],
   ['steering','Sim: Lenkung'],['throttle','Sim: Schubhebel'],['rudder','Sim: Seitenruder'],
-  ['toebrake','Sim: Fußbremse'],['aileron','Sim: Querruder'],['elevator','Sim: Höhenruder'],
-  ['collective','Sim: Kollektiv']];
+  ['toebrake','Sim: Fußbremse (nicht unter Linux)'],['aileron','Sim: Querruder (nicht unter Linux)'],['elevator','Sim: Höhenruder (nicht unter Linux)'],
+  ['collective','Sim: Kollektiv (nicht unter Linux)']];
 const USAGE_OPTS=USAGES.map(u=>[u,u.toUpperCase().replace('SLIDER','Slider').replace('DIAL','Dial').replace('WHEEL','Wheel')]).concat(SIM_USAGES);
 /* Wie pins.py: IO21, GPIO21 und GP21 meinen denselben Chip-Pin. */
 const PRAEF=['GPIO','IO','GP'];
@@ -663,7 +665,8 @@ function bauForm(){
 
   h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>'+
     '<div class="sub" style="margin:4px 0 6px">HID-Achse „Sim: …“ = Simulation Controls. Beschreibt Pedale und Lenkrad treffender, '+
-    'wird aber nicht von jedem Spiel erkannt – ausprobieren, bei Problemen zurück auf Rx/Ry/Rz.</div>';
+    'wird aber nicht von jedem Spiel erkannt – ausprobieren, bei Problemen zurück auf Rx/Ry/Rz. '+
+    'Linux kennt nur Sim: Gas, Bremse, Lenkung, Schubhebel und Seitenruder – Kupplung dort z. B. als Rz oder Slider.</div>';
   K.axes.forEach((a,i)=>{const t=a.type||'pot',p='axes.'+i+'.';
     h+='<div class="item">'+kopf('Achse '+(i+1),'axes',i)+
     '<div class="row c3">'+selF(p+'type','Typ',[['pot','Poti / Hall'],['as5600','AS5600 (Winkel)'],['hx711','Wägezelle HX711'],['encoder','Encoder']])+selF(p+'usage','HID-Achse',USAGE_OPTS)+txtF(p+'name','Name')+'</div>';
