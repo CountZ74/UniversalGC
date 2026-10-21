@@ -650,6 +650,7 @@ function bauForm(){
     if(t==='hx711')h+='<div class="row c4">'+pinF(p+'dt','DT')+pinF(p+'sck','SCK')+selF(p+'mode','Auslesen',[['pio','PIO (Pico)'],['bitbang','Bit-Banging']])+numF(p+'filter','Filter')+'</div>';
     else if(t==='encoder')h+='<div class="row c4">'+pinF(p+'a','A')+pinF(p+'b','B')+numF(p+'steps','Rasten 0→100 %')+chkF(p+'center','Start in der Mitte')+'</div>';
     else h+='<div class="row c3">'+pinF(p+'pin','Pin',true)+numF(p+'deadzone','Totzone %')+numF(p+'margin','Reserve %')+'</div>';
+    if(t==='pot')h+='<div class="row c2">'+numF(p+'smooth','Glättung (0 = aus, Standard 3)')+numF(p+'hyst','Hysterese % (Standard 0,5)')+'</div>';
     h+='</div>';});
   h+='<button class="btn s" style="width:100%" onclick="dazu(\'axes\',{type:\'pot\',pin:\'\',usage:\''+(USAGES.find(u=>!K.axes.some(a=>a.usage===u))||'slider')+'\'})">+ Achse</button></div>';
 

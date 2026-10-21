@@ -428,6 +428,28 @@ class Ctx:
         return self.a[i] if i < len(self.a) else 0.0
 
 
+def test_poti_filter():
+    import random
+    rnd = random.Random(1)
+    f = kalib.PotiFilter(3, 0.5)
+    werte = [f(0.5 + rnd.uniform(-0.003, 0.003)) for _ in range(500)]
+    check("Poti-Filter: Rauschen in Ruhe gibt einen festen Wert",
+          len(set(werte[20:])) == 1)
+    for _ in range(100):
+        w = f(1.0)
+    check("Poti-Filter: Anschlag 100 %% genau erreicht (%r)" % w, w == 1.0)
+    for _ in range(100):
+        w = f(0.0)
+    check("Poti-Filter: Anschlag 0 %% genau erreicht (%r)" % w, w == 0.0)
+    for _ in range(100):
+        w = f(0.3)
+    check("Poti-Filter: folgt einer Bewegung (%r)" % w, abs(w - 0.3) < 0.006)
+    g = kalib.PotiFilter(0, 0)
+    check("Poti-Filter aus: unveraendert", g(0.123) == 0.123)
+    check("Poti-Filter: Unsinn faellt auf Standard zurueck",
+          kalib.PotiFilter("x", None).h == 0.005)
+
+
 def test_logik():
     ctx = Ctx(bits=(9, 10), achsen=(95.0,), tele={"motor": 0.0, "rpm": 7200.0,
                                                    "pit": "True"})

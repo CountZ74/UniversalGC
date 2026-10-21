@@ -115,6 +115,42 @@ def norm(raw, c, dz=0.0, mg=0.0):
     return (n - dz) / (1.0 - dz - mg)
 
 
+class PotiFilter:
+    """Glaettung und Hysterese fuer Potis (auf den Wert 0.0 .. 1.0).
+
+    glatt  0 = aus, sonst gleitender Mittelwert ueber etwa glatt+1 Runden
+    hyst   Prozent: kleinere Aenderungen werden nicht weitergegeben. Damit
+           steht der Wert in Ruhe still, auch wenn der ADC rauscht - und es
+           gehen keine Reports raus.
+    Die Anschlaege 0 und 1 werden trotzdem genau erreicht.
+    """
+
+    def __init__(self, glatt=3, hyst=0.5):
+        try:
+            glatt, hyst = float(glatt), float(hyst)
+        except (TypeError, ValueError):       # Unsinn in device.json
+            glatt, hyst = 3.0, 0.5
+        self.a = 1.0 / (1 + max(0.0, glatt))
+        self.h = max(0.0, hyst) / 100.0
+        self.y = None
+        self.aus = 0.0
+
+    def __call__(self, n):
+        y = n if self.y is None else self.y + (n - self.y) * self.a
+        self.y = y
+        rand = max(self.h, 0.002)
+        if y <= rand or n <= 0.0 and y <= 2 * rand:
+            y = 0.0
+        elif y >= 1.0 - rand or n >= 1.0 and y >= 1.0 - 2 * rand:
+            y = 1.0
+        d = y - self.aus
+        if d < 0:
+            d = -d
+        if d >= self.h or y in (0.0, 1.0):
+            self.aus = y
+        return self.aus
+
+
 def kurve(x, punkte):
     """Prozent -> Prozent, linear zwischen den Stuetzpunkten."""
     x = 0 if x < 0 else (100 if x > 100 else x)

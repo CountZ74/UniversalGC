@@ -191,6 +191,11 @@ class Achse:
         self.enc = None
         self.enc_pos = 0
         self.fehler = None
+        # Potis rauschen; auf Tempo kommt es bei ihnen selten an (Drehregler,
+        # Kupplungswippe). Pedale (AS5600, Waegezelle) haben eigene Filter.
+        self.filter = None
+        if self.typ == "pot":
+            self.filter = kalib.PotiFilter(acfg.get("smooth", 3), acfg.get("hyst", 0.5))
         try:
             if self.typ in ("pot", "as5600"):
                 self.adc = analogio.AnalogIn(pin(acfg["pin"]))
@@ -247,6 +252,11 @@ class Achse:
         if self.typ == "encoder":
             return raw / self.schritte
         return kalib.norm(raw, self.cal, self.dz, self.mg)
+
+    def gefiltert(self, raw):
+        """norm() plus Poti-Filter - nur einmal je Runde aufrufen."""
+        n = self.norm(raw)
+        return self.filter(n) if self.filter else n
 
     def hid(self, raw):
         return kalib.ausgabe(self.norm(raw), self.cal)

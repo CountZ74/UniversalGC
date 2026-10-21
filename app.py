@@ -398,7 +398,7 @@ class App:
             else:
                 raw = a.roh_mittel()
             self.ax_roh[i] = raw
-            n = a.norm(raw)
+            n = a.gefiltert(raw)
             self.ax_pct[i] = n * 100.0
             self.ax_hid[i] = kalib.ausgabe(n, self.cal[i])
             if a.hx is not None:
