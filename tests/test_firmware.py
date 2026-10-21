@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import types
+import time
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 FW = os.path.dirname(HIER)
@@ -826,23 +827,68 @@ def test_ble_drosselt():
     check("BLE: danach nur der neueste Report", gesendet == [bytes([0]), bytes([4])])
 
 
+class _FakeApp:
+    """Gerade genug von App, um _senden zu pruefen."""
+
+    def __init__(self, send_report):
+        import app
+        self.report, self.letzter = bytearray(3), bytearray(3)
+        self.n_btn, self.ax_hid, self.letzte_ax = 8, [0], [0]
+        self.schwelle, self.lg = 0, {"suppress": []}
+        self.ein = types.SimpleNamespace(aus=bytearray(8))
+        self.hid = types.SimpleNamespace(send_report=send_report)
+        self.ble_rep = []
+        self.ble = types.SimpleNamespace(senden=lambda r: self.ble_rep.append(bytes(r)))
+        self._rt = types.SimpleNamespace(usb_connected=True)
+        self.usb_pause_bis, self.usb_nachholen = 0.0, False
+        self.USB_ZU_LANG, self.USB_PAUSE = app.App.USB_ZU_LANG, app.App.USB_PAUSE
+        self._usb_senden = lambda r, now: app.App._usb_senden(self, r, now)
+        self.senden = lambda: app.App._senden(self)
+
+
 def test_ohne_usb_nur_bluetooth():
-    import app
-    usb, ble = [], []
-    a = types.SimpleNamespace(
-        report=bytearray(3), letzter=bytearray(3), n_btn=8, ax_hid=[0],
-        letzte_ax=[0], schwelle=0, lg={"suppress": []},
-        ein=types.SimpleNamespace(aus=bytearray(8)),
-        hid=types.SimpleNamespace(send_report=lambda r, i: usb.append(bytes(r))),
-        ble=types.SimpleNamespace(senden=lambda r: ble.append(bytes(r))),
-        _rt=types.SimpleNamespace(usb_connected=False))
+    usb = []
+    a = _FakeApp(lambda r, i: usb.append(bytes(r)))
+    a._rt.usb_connected = False
     a.ein.aus[0] = 1
-    app.App._senden(a)
-    check("Ohne USB-Host: kein send_report an USB (wartet sonst 2 s)", usb == [] and len(ble) == 1)
+    a.senden()
+    check("Ohne USB-Host: kein send_report an USB (wartet sonst 2 s)",
+          usb == [] and len(a.ble_rep) == 1)
     a._rt.usb_connected = True
     a.ein.aus[1] = 1
-    app.App._senden(a)
-    check("Mit USB-Host: an beide", len(usb) == 1 and len(ble) == 2)
+    a.senden()
+    check("Mit USB-Host: an beide", len(usb) == 1 and len(a.ble_rep) == 2)
+
+
+def test_usb_ohne_abfrage_pausiert():
+    import app
+    usb = []
+    uhr = [100.0]
+    app.time = types.SimpleNamespace(monotonic=lambda: uhr[0], sleep=time.sleep)
+
+    def haengt(r, i):            # wie send_report, wenn der PC nicht abfragt
+        usb.append(bytes(r))
+        uhr[0] += 2.0
+        raise OSError("timeout")
+
+    try:
+        a = _FakeApp(haengt)
+        a.ein.aus[0] = 1
+        a.senden()
+        check("USB haengt: Pause gesetzt", a.usb_pause_bis > uhr[0] and a.usb_nachholen)
+        a.ein.aus[1] = 1
+        a.senden()
+        check("USB-Pause: kein weiterer haengender Versuch", len(usb) == 1)
+        check("USB-Pause: Bluetooth bekommt trotzdem jeden Stand", len(a.ble_rep) == 2)
+        a.hid.send_report = lambda r, i: usb.append(bytes(r))
+        uhr[0] = a.usb_pause_bis + 0.01
+        a.senden()                       # nichts geaendert - trotzdem nachholen
+        check("Nach der Pause wird der aktuelle Stand nachgeholt",
+              len(usb) == 2 and usb[-1][0] == 0b11 and not a.usb_nachholen)
+        a.senden()
+        check("Danach wieder nur bei Aenderung", len(usb) == 2)
+    finally:
+        app.time = time
 
 
 def test_leds():

@@ -265,6 +265,13 @@ class App:
             self._rt.usb_connected
         except (ImportError, AttributeError):
             self._rt = None
+        # Auch mit Kabel fragt der PC nicht immer ab: Linux pollt ein
+        # HID-Geraet nur, solange ein Programm es geoeffnet hat. Dann haengt
+        # send_report jedes Mal bis zu 2 s, und mit rauschenden Potis steht die
+        # ganze Schleife (Webserver tot, Eingaben veraltet). Deshalb: Dauert
+        # ein Report zu lange, wird USB eine Weile ausgelassen.
+        self.usb_pause_bis = 0.0
+        self.usb_nachholen = False
 
         from ble_hid import BleHid
         self.ble = BleHid(c, cfg.descriptor(c), self.usage)
@@ -432,19 +439,39 @@ class App:
                 d = -d
             if d > self.schwelle or (v in (0, kalib.AXIS_MAX) and d):
                 neu_ax = True
-        if not neu_ax and r[:nb] == self.letzter[:nb]:
+        now = time.monotonic()
+        nachholen = self.usb_nachholen and now >= self.usb_pause_bis
+        if not neu_ax and r[:nb] == self.letzter[:nb] and not nachholen:
             return
         for i, v in enumerate(self.ax_hid):
             r[nb + 2 * i] = v & 0xFF
             r[nb + 2 * i + 1] = (v >> 8) & 0xFF
             self.letzte_ax[i] = v
+        neu = r != self.letzter
         self.letzter[:] = r
         if self.hid is not None and (self._rt is None or self._rt.usb_connected):
-            try:
-                self.hid.send_report(r, cfg.REPORT_ID)
-            except (OSError, ValueError):
-                pass
-        self.ble.senden(r)
+            if now < self.usb_pause_bis:
+                self.usb_nachholen = True      # Stand nach der Pause senden
+            else:
+                self._usb_senden(r, now)
+        if neu:
+            self.ble.senden(r)
+
+    USB_ZU_LANG = 0.1     # s - laenger wartet send_report nur ohne Abfrage
+    USB_PAUSE = 5.0       # s ohne USB-Reports danach
+
+    def _usb_senden(self, r, now):
+        try:
+            self.hid.send_report(r, cfg.REPORT_ID)
+        except (OSError, ValueError):
+            pass
+        if time.monotonic() - now > self.USB_ZU_LANG:
+            if not self.usb_nachholen:
+                print("USB: PC fragt nicht ab - Reports pausiert")
+            self.usb_pause_bis = time.monotonic() + self.USB_PAUSE
+            self.usb_nachholen = True
+        else:
+            self.usb_nachholen = False
 
     def _status_led(self, now):
         if self.status is None:
