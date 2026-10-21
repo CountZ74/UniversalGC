@@ -312,7 +312,7 @@ function renderAchsen(){
     if(t==='hx711')m='Roh '+S.r[i]+' · Maximalkraft '+sp+' · '+(S.hz[i]||0)+' Hz';
     else if(t==='as5600')m='Roh '+S.r[i]+' ('+grad(S.r[i])+') · Null '+st+' · Weg '+(sp>0?'+':'')+sp+' ('+grad(Math.abs(sp))+')';
     else if(t==='encoder')m='Schritte '+S.r[i];
-    else m='Roh '+S.r[i]+' · Start '+st+' · Weg '+(sp>0?'+':'')+sp;
+    else m='Roh '+S.r[i]+' · Start '+st+' · Weg '+(sp>0?'+':'')+sp+(I.am&&I.am[i]?' · mit Mitte':'');
     $('m'+i).textContent=m;
     $('a'+i).classList.toggle('dim',S.ax!==null&&S.ax!==i);
   }
@@ -322,13 +322,13 @@ function renderAchsen(){
   const n=esc(I.an[S.ax]),t=I.at[S.ax];
   if(S.st==='zero'){
     el.innerHTML='<div class="sw"><b>Schritt 1/2 – '+n+'</b><br>'+
-      (t==='pot'?'In die Ruhestellung bringen (das Ende, das 0 % sein soll).':'Vollständig loslassen und ruhig halten.')+
-      '<div class="br"><button class="btn" onclick="go(\'/cal_zero\')">Ruhestellung setzen</button>'+
+      (I.am&&I.am[S.ax]?'In die <b>Mittelstellung</b> bringen.':(t==='pot'?'In die Ruhestellung bringen (das Ende, das 0 % sein soll).':'Vollständig loslassen und ruhig halten.'))+
+      '<div class="br"><button class="btn" onclick="go(\'/cal_zero\')">'+(I.am&&I.am[S.ax]?'Mitte setzen':'Ruhestellung setzen')+'</button>'+
       '<button class="btn s" onclick="go(\'/cal_abort\')">Abbrechen</button></div></div>';
   }else if(S.st==='sweep'){
     const f=S.sw[0],r=S.sw[1],max=t==='pot'?f+r:Math.max(f,r),min=t==='hx711'?1000:(t==='pot'?500:300);
     const txt=t==='hx711'?max+' Zähler':(t==='as5600'?max+' Schritte ('+grad(max)+')':max+' Schritte');
-    el.innerHTML='<div class="sw"><b>Schritt 2/2 – '+n+'</b><br>Jetzt zwei-, dreimal <b>ganz durchbewegen</b>. Der Wert muss dabei wachsen.'+
+    el.innerHTML='<div class="sw"><b>Schritt 2/2 – '+n+'</b><br>'+(I.am&&I.am[S.ax]?'Jetzt zwei-, dreimal <b>bis zu beiden Anschlägen</b> drehen.':'Jetzt zwei-, dreimal <b>ganz durchbewegen</b>. Der Wert muss dabei wachsen.')+
       '<span class="sv">'+txt+'</span>'+
       '<div class="br"><button class="btn" onclick="go(\'/cal_finish\')"'+(max<min?' disabled':'')+'>Fertig</button>'+
       '<button class="btn s" onclick="go(\'/cal_abort\')">Abbrechen</button></div></div>';
@@ -650,7 +650,7 @@ function bauForm(){
     if(t==='hx711')h+='<div class="row c4">'+pinF(p+'dt','DT')+pinF(p+'sck','SCK')+selF(p+'mode','Auslesen',[['pio','PIO (Pico)'],['bitbang','Bit-Banging']])+numF(p+'filter','Filter')+'</div>';
     else if(t==='encoder')h+='<div class="row c4">'+pinF(p+'a','A')+pinF(p+'b','B')+numF(p+'steps','Rasten 0→100 %')+chkF(p+'center','Start in der Mitte')+'</div>';
     else h+='<div class="row c3">'+pinF(p+'pin','Pin',true)+numF(p+'deadzone','Totzone %')+numF(p+'margin','Reserve %')+'</div>';
-    if(t==='pot')h+='<div class="row c2">'+numF(p+'smooth','Glättung (0 = aus, Standard 3)')+numF(p+'hyst','Hysterese % (Standard 0,5)')+'</div>';
+    if(t==='pot')h+='<div class="row c3">'+chkF(p+'center','Mittelstellung (Totzone um die Mitte)')+numF(p+'smooth','Glättung (0 = aus, Standard 3)')+numF(p+'hyst','Hysterese % (Standard 0,5)')+'</div>';
     h+='</div>';});
   h+='<button class="btn s" style="width:100%" onclick="dazu(\'axes\',{type:\'pot\',pin:\'\',usage:\''+(USAGES.find(u=>!K.axes.some(a=>a.usage===u))||'slider')+'\'})">+ Achse</button></div>';
 

@@ -186,6 +186,9 @@ class Achse:
         self.cal = cal
         self.mittel = max(1, int(mittel))
         self.dz, self.mg = kalib.raender(acfg)
+        # Mittelstellung (Drehregler mit Raste, Trimmung, Hall-Stick): 50 %
+        # in der Mitte, Totzone um die Mitte
+        self.mitte = self.typ == "pot" and bool(acfg.get("center"))
         self.adc = None
         self.hx = None
         self.enc = None
@@ -251,7 +254,7 @@ class Achse:
     def norm(self, raw):
         if self.typ == "encoder":
             return raw / self.schritte
-        return kalib.norm(raw, self.cal, self.dz, self.mg)
+        return kalib.norm(raw, self.cal, self.dz, self.mg, self.mitte)
 
     def gefiltert(self, raw):
         """norm() plus Poti-Filter - nur einmal je Runde aufrufen."""

@@ -177,6 +177,11 @@ Speicher.
 - **Belegung ändern:** Tab *Belegung* → *Prüfen* → *Speichern & Neustart*. Der PC liest
   den Aufbau nur beim Einstecken, deshalb der Neustart.
   Neue Buttonnummern oder Achsen müssen im Spiel einmal neu zugeordnet werden.
+- **Poti-Achsen:** Glättung (`smooth`, Standard 3) und Hysterese (`hyst`, Standard
+  0,5 %) halten rauschende Potis in Ruhe still. Mit **Mittelstellung** (`center`)
+  liegen 50 % in der Mitte, die Totzone wirkt um die Mitte – für Drehregler mit
+  Raste, Trimmung oder Hall-Sticks. Kalibrieren: Mitte setzen, dann bis zu beiden
+  Anschlägen drehen.
 - **Buttonnummern festhalten:** Jede Quelle (Taster, Matrix, Schieberegister, Encoder,
   Logik) kann ihre erste Nummer mit `btn` festlegen. So bleiben die Zuordnungen im Spiel
   gültig, wenn später etwas dazukommt.

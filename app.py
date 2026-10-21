@@ -515,7 +515,7 @@ class App:
             null = 0
         else:
             null = a.roh_mittel(16)
-        self.sweep = kalib.Sweep(a.typ, null)
+        self.sweep = kalib.Sweep(a.typ, null, a.mitte)
         self.cal_zustand = CAL_SWEEP
 
     def cal_finish(self):
@@ -527,10 +527,19 @@ class App:
             self.cal_meldung = "Zu wenig Bewegung erkannt - ganz durchbewegen"
             return
         self.cal[i]["start"], self.cal[i]["span"] = e
+        warnung = ""
+        if self.achsen[i].mitte:
+            self.cal[i]["mitte"] = self.sweep.null
+            tm = (self.sweep.null - e[0]) / e[1]
+            if not 0.05 < tm < 0.95:
+                warnung = (" - Mitte lag am Rand des Weges, es gilt die Wegmitte."
+                           " Fuer eine echte Mitte neu kalibrieren")
+        else:
+            self.cal[i].pop("mitte", None)
         ok = self._cal_speichern()
         self.cal_meldung = "%s: Weg %d %s%s" % (
             self.achsen[i].name, abs(e[1]), "aufwaerts" if e[1] > 0 else "abwaerts",
-            "" if ok else " (nur im RAM, Dateisystem schreibgeschuetzt)")
+            "" if ok else " (nur im RAM, Dateisystem schreibgeschuetzt)") + warnung
         self.cal_zustand = CAL_DONE
         self.cal_achse = None
         self.sweep = None
@@ -710,6 +719,7 @@ class App:
             "bn": self.button_namen(), "nb": self.n_btn, "lb0": self.logik_bit,
             "an": [a.name for a in self.achsen],
             "at": [a.typ for a in self.achsen],
+            "am": [a.mitte for a in self.achsen],
             "cv": [k.get("curve", kalib.DEFAULT_CURVE) for k in self.cal],
             "lg": self.lg, "ln": [l.get("name") or l.get("pin") for l in self.c["leds"]],
             "px": self.leds.px_n,

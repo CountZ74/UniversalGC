@@ -450,6 +450,34 @@ def test_poti_filter():
           kalib.PotiFilter("x", None).h == 0.005)
 
 
+def test_mittelstellung():
+    # Poti von 1000 bis 61000, Mitte nicht mittig bei 25000
+    c = {"typ": "pot", "start": 1000, "span": 60000, "mitte": 25000}
+    n = lambda raw: kalib.norm(raw, c, 0.02, 0.01, True)   # noqa: E731
+    check("Mitte: Mitte = 50 %", n(25000) == 0.5)
+    check("Mitte: Totzone um die Mitte", n(25300) == 0.5 and n(24700) == 0.5)
+    check("Mitte: Anschlaege 0 und 100 %", n(1000) == 0.0 and n(61000) == 1.0)
+    check("Mitte: ausserhalb begrenzt", n(0) == 0.0 and n(65535) == 1.0)
+    check("Mitte: Haelften getrennt gestreckt",
+          abs(n(13000) - 0.25) < 0.02 and abs(n(43000) - 0.75) < 0.02)
+    kalib.flip(c)
+    check("Mitte: umgekehrt", n(1000) == 1.0 and n(61000) == 0.0 and n(25000) == 0.5)
+    ohne = {"typ": "pot", "start": 0, "span": 65535}
+    check("Mitte ohne Kalibrierung: Wegmitte", kalib.norm(32768, ohne, 0.01, 0.01, True) == 0.5)
+
+    sw = kalib.Sweep("pot", 40000, mitte=True)
+    for r in (40000, 60000, 2000, 61000, 1000, 40000):
+        sw.update(r)
+    check("Mitte: Sweep nimmt Minimum als Start", sw.ergebnis() == (1000, 60000))
+
+    f = kalib.PotiFilter(3, 0.5)
+    for _ in range(50):
+        w = f(0.8)
+    for _ in range(100):
+        w = f(0.5)
+    check("Poti-Filter: Mitte rastet genau ein (%r)" % w, w == 0.5)
+
+
 def test_logik():
     ctx = Ctx(bits=(9, 10), achsen=(95.0,), tele={"motor": 0.0, "rpm": 7200.0,
                                                    "pit": "True"})

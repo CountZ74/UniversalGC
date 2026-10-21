@@ -12,6 +12,10 @@
 #   span   Weg in Rohwerten, VORZEICHENBEHAFTET: > 0 Rohwert steigt beim
 #          Betaetigen, < 0 er faellt. Ein Vorzeichenwechsel kehrt die Achse um.
 #   curve  Stuetzpunkte der Kennlinie in Prozent
+#   mitte  nur Achsen mit Mittelstellung ("center" in device.json): Rohwert
+#          der Mitte. start/span umfassen dann den ganzen Weg, 50 Prozent
+#          liegen auf "mitte" - auch wenn die Mitte nicht genau in der Haelfte
+#          des Weges liegt (Poti nicht mittig eingebaut).
 #
 # Totzone am Anfang und Reserve am Ende stehen in device.json je Achse
 # ("deadzone", "margin" in Prozent) und wirken bei der Auswertung - eine
@@ -105,8 +109,35 @@ def roh_norm(raw, c):
     return (raw - c["start"]) / span
 
 
-def norm(raw, c, dz=0.0, mg=0.0):
+def norm_mitte(raw, c, dz=0.0, mg=0.0):
+    """Achse mit Mittelstellung -> 0.0 .. 1.0, Mitte = 0.5.
+
+    Beide Haelften werden getrennt gestreckt; die Totzone liegt um die Mitte,
+    die Reserve an beiden Enden."""
+    t = roh_norm(raw, c)
+    span = c["span"]
+    m = c.get("mitte")
+    tm = 0.5 if m is None or not span else (m - c["start"]) / span
+    if tm <= 0.05 or tm >= 0.95:
+        tm = 0.5                          # Mitte unplausibel: Wegmitte nehmen
+    if t < tm:
+        x = (t - tm) / tm                 # -1 .. 0
+    else:
+        x = (t - tm) / (1.0 - tm)         # 0 .. 1
+    a = -x if x < 0 else x
+    if a <= dz:
+        return 0.5
+    if a >= 1.0 - mg:
+        a = 1.0
+    else:
+        a = (a - dz) / (1.0 - dz - mg)
+    return 0.5 - 0.5 * a if x < 0 else 0.5 + 0.5 * a
+
+
+def norm(raw, c, dz=0.0, mg=0.0, mitte=False):
     """Rohwert -> 0.0 .. 1.0 mit Totzone am Anfang und Reserve am Ende."""
+    if mitte:
+        return norm_mitte(raw, c, dz, mg)
     n = roh_norm(raw, c)
     if n <= dz:
         return 0.0
@@ -122,7 +153,8 @@ class PotiFilter:
     hyst   Prozent: kleinere Aenderungen werden nicht weitergegeben. Damit
            steht der Wert in Ruhe still, auch wenn der ADC rauscht - und es
            gehen keine Reports raus.
-    Die Anschlaege 0 und 1 werden trotzdem genau erreicht.
+    Die Anschlaege 0 und 1 (und bei Mittelstellung 0.5) werden trotzdem
+    genau erreicht.
     """
 
     def __init__(self, glatt=3, hyst=0.5):
@@ -143,10 +175,12 @@ class PotiFilter:
             y = 0.0
         elif y >= 1.0 - rand or n >= 1.0 and y >= 1.0 - 2 * rand:
             y = 1.0
+        elif n == 0.5 and -2 * rand <= y - 0.5 <= 2 * rand:
+            y = 0.5                  # Achse mit Mittelstellung: Mitte genau
         d = y - self.aus
         if d < 0:
             d = -d
-        if d >= self.h or y in (0.0, 1.0):
+        if d >= self.h or y in (0.0, 0.5, 1.0):
             self.aus = y
         return self.aus
 
@@ -210,7 +244,8 @@ class Sweep:
     voll durchbewegen. Weg und Richtung ergeben sich daraus.
 
     pot     Minimum und Maximum werden mitgeschrieben. Das Ende, das naeher an
-            der Ruhestellung liegt, wird 0 Prozent.
+            der Ruhestellung liegt, wird 0 Prozent. Mit Mittelstellung ist
+            die Ruhestellung die Mitte; das Minimum wird 0 Prozent.
     as5600  Abdeckungskarte (Pedale v9.3): angekreuzt wird, WO die Achse war,
             nicht wie weit sie lief. Eine Messpause laesst hoechstens ein Feld
             leer, das der naechste Durchgang wieder fuellt.
@@ -222,9 +257,10 @@ class Sweep:
     hx711   groesste Kraft.
     """
 
-    def __init__(self, typ, null):
+    def __init__(self, typ, null, mitte=False):
         self.typ = typ
         self.null = null
+        self.mitte = mitte          # null ist die Mitte, nicht ein Ende
         self.mn = null
         self.mx = null
         self.cover = None
@@ -324,6 +360,8 @@ class Sweep:
             return 0, self.mx
         if self.typ == "pot":
             weite = self.mx - self.mn
+            if self.mitte:
+                return self.mn, weite         # Mitte merkt sich cal_finish
             # Ruhestellung naeher am Minimum -> Rohwert steigt beim Betaetigen
             if (self.null - self.mn) <= (self.mx - self.null):
                 return self.mn, weite
