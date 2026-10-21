@@ -80,6 +80,7 @@ def defaults():
         "matrix": None,
         "shift": [],
         "encoders": [],
+        "selectors": [],
         "axes": [],
         "logic": {"count": 0, "first": 0},
         "leds": [],
@@ -117,7 +118,7 @@ def normalize(daten):
     if not isinstance(daten, dict):
         daten = {}
     c = _merge(defaults(), daten)
-    for k in ("buttons", "shift", "encoders", "axes", "leds"):
+    for k in ("buttons", "shift", "encoders", "selectors", "axes", "leds"):
         if not isinstance(c.get(k), list):
             c[k] = []
     if not isinstance(c.get("logic"), dict):
@@ -173,6 +174,13 @@ def load(rueckfall=False, leise=False):
 # festlegen (1-basiert, wie Windows sie anzeigt). Ohne "btn" geht es mit der
 # naechsten freien Nummer weiter.
 
+def _stellungen(st):
+    try:
+        return max(2, min(32, int(st.get("positions", 8))))
+    except (TypeError, ValueError):
+        return 8
+
+
 def button_quellen(c):
     """Liste (art, index, anzahl, gewuenschte_erste_nummer_oder_None)."""
     q = []
@@ -185,6 +193,8 @@ def button_quellen(c):
         q.append(("shift", i, int(s.get("count", 8)), s.get("btn")))
     for i, e in enumerate(c["encoders"]):
         q.append(("encoder", i, 2, e.get("btn")))
+    for i, st in enumerate(c.get("selectors") or []):
+        q.append(("stufen", i, _stellungen(st), st.get("btn")))
     lg = c.get("logic") or {}
     n = int(lg.get("count", 0) or 0)
     if n > 0:
@@ -400,6 +410,8 @@ def pins_belegt(c):
         else:
             dazu(e.get("a"), "Encoder %d A" % (i + 1))
             dazu(e.get("b"), "Encoder %d B" % (i + 1))
+    for i, st in enumerate(c.get("selectors") or []):
+        dazu(st.get("pin"), "Stufenschalter %d" % (i + 1))
     for i, a in enumerate(c["axes"]):
         t = a.get("type")
         if t == "hx711":
@@ -491,6 +503,24 @@ def validate(c, pin_id=None, analog_ok=None):
                 f.append("Encoder %d: Rasten je Umdrehung 2 bis 64" % (i + 1))
         elif not (e.get("a") and e.get("b")):
             f.append("Encoder %d braucht A und B" % (i + 1))
+    for i, st in enumerate(c.get("selectors") or []):
+        if not st.get("pin"):
+            f.append("Stufenschalter %d: kein Pin" % (i + 1))
+        elif analog_ok is not None and not analog_ok(st["pin"]):
+            f.append("Stufenschalter %d: %s ist kein Analogeingang" % (i + 1, st["pin"]))
+        try:
+            n = int(st.get("positions", 8))
+        except (TypeError, ValueError):
+            n = 0
+        if not 2 <= n <= 32:
+            f.append("Stufenschalter %d: 2 bis 32 Stellungen" % (i + 1))
+        elif st.get("type", "as5600") == "as5600" and st.get("step"):
+            try:
+                if float(st["step"]) * (n - 1) >= 360:
+                    f.append("Stufenschalter %d: %d Stellungen zu je %s Grad passen "
+                             "nicht auf eine Umdrehung" % (i + 1, n, st["step"]))
+            except (TypeError, ValueError):
+                f.append("Stufenschalter %d: Abstand ist keine Zahl" % (i + 1))
     for i, b in enumerate(c["buttons"]):
         if not b.get("pin"):
             f.append("Taster %d: kein Pin" % (i + 1))

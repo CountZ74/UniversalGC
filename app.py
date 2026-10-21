@@ -367,6 +367,12 @@ class App:
             nm = e.get("name") or "Encoder %d" % (i + 1)
             setz(self.bloecke[("encoder", i)], nm + " rechts")
             setz(self.bloecke[("encoder", i)] + 1, nm + " links")
+        for i, st in enumerate(c.get("selectors") or []):
+            nm = st.get("name") or "Schalter %d" % (i + 1)
+            namen = st.get("names") or []
+            for k in range(cfg._stellungen(st)):
+                setz(self.bloecke[("stufen", i)] + k,
+                     namen[k] if k < len(namen) and namen[k] else "%s %d" % (nm, k + 1))
         for i, b in enumerate(self.lg["buttons"]):
             setz(self.logik_bit + i, "L: " + (b.get("name") or ""))
         return n
@@ -744,6 +750,7 @@ class App:
             "lb": [1 if x else 0 for x in self.logik_an],
             "led": self.leds.zustand,
             "enc": self.ein.encoder_positionen(),
+            "sel": self.ein.stufen_json(),
             "rb": [int(x * 100) for x in self.rumble.ist] if self.rumble else [],
             "ble": self.ble.status(), "fs": self.schreibbar,
             "mem": gc.mem_free(),

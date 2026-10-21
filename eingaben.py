@@ -125,6 +125,65 @@ class WinkelEncoder:
         return self._lesen()
 
 
+class Stufen:
+    """Stufenschalter an einem Analogpin: Rohwert -> Stellung 0 .. n-1.
+
+    typ "as5600"  Winkel: Stellung 1 liegt bei null, die naechsten je
+                  schritt_grad weiter. Fuellen die Stellungen den ganzen Kreis
+                  (n * schritt = 360 Grad), geht es von der letzten wieder
+                  zur ersten.
+    typ "pot"     Widerstandskette: die Stellungen verteilen sich gleichmaessig
+                  von 0 bis 3,3 V.
+    Gewechselt wird erst, wenn der Wert um hyst (Anteil eines Abstands) ueber
+    die Haelfte zur Nachbarstellung hinaus ist - nichts zappelt.
+    """
+
+    def __init__(self, typ, n, schritt_grad=None, null=0, umkehren=False, hyst=0.2):
+        self.typ = typ
+        self.n = max(2, int(n))
+        self.umkehren = umkehren
+        self.hyst = hyst
+        self.null = int(null) % 65536
+        if typ == "as5600":
+            g = float(schritt_grad) if schritt_grad else 360.0 / self.n
+            self.schritt = g / 360.0 * 65536
+            self.rund = abs(self.schritt * self.n - 65536) < self.schritt / 4
+        else:
+            self.schritt = 65535.0 / (self.n - 1)
+            self.rund = False
+        self.s = None
+
+    def lage(self, raw):
+        """Stellung als Kommazahl (0 = Stellung 1)."""
+        if self.typ != "as5600":
+            x = raw / self.schritt
+            return (self.n - 1) - x if self.umkehren else x
+        d = ((self.null - raw) if self.umkehren else (raw - self.null)) % 65536
+        if not self.rund:
+            # ungenutzter Rest des Kreises: zur naeheren Endstellung
+            ende = (self.n - 1) * self.schritt
+            if d > ende + (65536 - ende) / 2:
+                d -= 65536
+        return d / self.schritt
+
+    def _passend(self, k):
+        if self.rund:
+            return k % self.n
+        return 0 if k < 0 else (self.n - 1 if k > self.n - 1 else k)
+
+    def update(self, raw):
+        x = self.lage(raw)
+        if self.s is None:
+            self.s = self._passend(int(round(x)))
+            return self.s
+        d = x - self.s
+        if self.rund:
+            d = (d + self.n / 2) % self.n - self.n / 2
+        if d > 0.5 + self.hyst or d < -0.5 - self.hyst:
+            self.s = self._passend(int(round(self.s + d)))
+        return self.s
+
+
 class Modi:
     """Betriebsarten der Buttons: normal, pulse, toggle."""
 
@@ -215,6 +274,20 @@ class Eingaben:
             except Exception as e:
                 self.fehler.append("Schieberegister %d: %s" % (i + 1, e))
 
+        # Stufenschalter: [adc, Stufen, erstes Bit, Rohwert]
+        self.stufen = []
+        for i, st in enumerate(c.get("selectors") or []):
+            try:
+                import analogio
+                typ = st.get("type", "as5600")
+                adc = analogio.AnalogIn(pin(st["pin"]))
+                self.stufen.append([adc, Stufen(typ, st.get("positions", 8),
+                                                st.get("step"), st.get("zero", 0),
+                                                bool(st.get("reverse"))),
+                                    bloecke[("stufen", i)], 0])
+            except Exception as ex:
+                self.fehler.append("Stufenschalter %d: %s" % (i + 1, ex))
+
         for i, e in enumerate(c["encoders"]):
             try:
                 if e.get("type") == "as5600":
@@ -258,6 +331,9 @@ class Eingaben:
         self.aus[:] = self.phys
         self.modi.ausgabe(self.phys, self.aus, now)
 
+        if self.stufen:
+            self._stufen_lesen()
+
         for eintrag in self.encoder:
             enc, p, bit, letzte, richtung = eintrag
             pos = enc.position
@@ -267,6 +343,22 @@ class Eingaben:
             r, l = p.schritt(now)
             self.phys[bit] = self.aus[bit] = 1 if r else 0
             self.phys[bit + 1] = self.aus[bit + 1] = 1 if l else 0
+
+    def _stufen_lesen(self):
+        import kalib
+        for eintrag in self.stufen:
+            adc, st, erstes, _ = eintrag
+            werte = [adc.value for _ in range(4)]
+            raw = kalib.kreis_mittel(werte) if st.typ == "as5600" else sum(werte) // 4
+            eintrag[3] = raw
+            k = st.update(raw)
+            for j in range(st.n):
+                b = erstes + j
+                self.phys[b] = self.aus[b] = 1 if j == k else 0
+
+    def stufen_json(self):
+        """[[Rohwert, Stellung 1..n], ...] fuer die Weboberflaeche."""
+        return [[e[3], (e[1].s or 0) + 1] for e in self.stufen]
 
     def encoder_positionen(self):
         return [e[0].position * e[4] for e in self.encoder]

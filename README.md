@@ -187,6 +187,12 @@ Speicher.
   nicht. Unter *Belegung → Encoder* Typ „AS5600 + Rastenknopf“ und die Rastenzahl je
   Umdrehung eintragen. Wie beim Drehencoder gibt jede Raste einen Impuls auf „rechts“
   bzw. „links“. Beim Einschalten muss der Knopf in einer Raste stehen.
+- **Stufenschalter:** Drehschalter mit festen Stellungen an *einem* Analogpin – je
+  Stellung ein Button, immer genau einer gedrückt. Entweder ein AS5600 hinter einem
+  Rastenknopf (Abstand der Stellungen in Grad, Stellung 1 per „Aktuelle Stellung als
+  Stellung 1“ übernehmen; füllen die Stellungen den ganzen Kreis, geht es von der
+  letzten zur ersten weiter) oder ein normaler Drehschalter mit Widerstandskette
+  (gleiche Widerstände zwischen den Kontakten, Enden an GND und 3,3 V).
 - **Buttonnummern festhalten:** Jede Quelle (Taster, Matrix, Schieberegister, Encoder,
   Logik) kann ihre erste Nummer mit `btn` festlegen. So bleiben die Zuordnungen im Spiel
   gültig, wenn später etwas dazukommt.

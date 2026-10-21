@@ -590,6 +590,8 @@ function numF(p,lbl){const v=hole(p);return '<div><label class="f">'+lbl+'</labe
 function chkF(p,lbl){return '<div><label class="f"><input type="checkbox" data-p="'+p+'" data-c="1"'+(hole(p)?' checked':'')+'> '+lbl+'</label></div>';}
 function selF(p,lbl,opts){const v=hole(p);return '<div><label class="f">'+lbl+'</label><select data-p="'+p+'">'+
   opts.map(o=>{const[w,t]=Array.isArray(o)?o:[o,o];return '<option value="'+w+'"'+(String(v)===String(w)?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>';}
+async function stufeNull(i){const d=await api('/data');if(d)S=d;   // Belegung pollt nicht - frisch holen
+  if(S&&S.sel&&S.sel[i]){K.selectors[i].zero=S.sel[i][0];bauForm();melde('cmsg',true,'Stellung 1 übernommen – noch speichern.');}}
 function weg(liste,i){K[liste].splice(i,1);bauForm();}
 function dazu(liste,obj){if(!Array.isArray(K[liste]))K[liste]=[];K[liste].push(obj);bauForm();}
 function kopf(t,liste,i){return '<div class="hd"><b>'+t+'</b><button class="x" onclick="weg(\''+liste+'\','+i+')">✕</button></div>';}
@@ -644,6 +646,19 @@ function bauForm(){
       :'<div class="row c4">'+pinF(p+'a','A')+pinF(p+'b','B')+selF(p+'divisor','Flanken/Raste',[1,2,4])+numF(p+'pulse_ms','Impuls ms')+'</div>'+chkF(p+'reverse','umkehren'))+
     '</div>';});
   h+='<button class="btn s" style="width:100%" onclick="dazu(\'encoders\',{a:\'\',b:\'\',divisor:4,pulse_ms:30})">+ Encoder</button></div>';
+
+  if(!Array.isArray(K.selectors))K.selectors=[];
+  h+='<div class="a"><b>Stufenschalter</b> <span class="sub">je Stellung ein Button, immer genau einer gedrückt</span>';
+  K.selectors.forEach((st,i)=>{const p='selectors.'+i+'.',w=(st.type||'as5600')==='as5600',live=S&&S.sel&&S.sel[i];
+    h+='<div class="item">'+kopf('Stufenschalter '+(i+1),'selectors',i)+
+    '<div class="row c3">'+selF(p+'type','Typ',[['as5600','AS5600 + Rastenknopf'],['pot','Widerstandskette']])+txtF(p+'name','Name')+numF(p+'btn','erste Button-Nr.')+'</div>'+
+    '<div class="row c4">'+pinF(p+'pin','Pin',true)+numF(p+'positions','Stellungen')+
+      (w?numF(p+'step','Abstand ° (leer = 360/Stellungen)')+numF(p+'zero','Rohwert Stellung 1'):'')+'</div>'+
+    chkF(p+'reverse','Richtung umkehren')+
+    (live?'<div class="sub">Jetzt: <b>Stellung '+live[1]+'</b> · Roh '+live[0]+'</div>':'<div class="sub">Live-Werte nach dem Speichern.</div>')+
+    (w&&live?'<button class="btn s k" onclick="stufeNull('+i+')">Aktuelle Stellung als Stellung 1</button>':'')+
+    '</div>';});
+  h+='<button class="btn s" style="width:100%" onclick="dazu(\'selectors\',{type:\'as5600\',pin:\'\',positions:8})">+ Stufenschalter</button></div>';
 
   h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>'+
     '<div class="sub" style="margin:4px 0 6px">HID-Achse „Sim: …“ = Simulation Controls. Beschreibt Pedale und Lenkrad treffender, '+

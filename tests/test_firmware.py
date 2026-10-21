@@ -602,6 +602,68 @@ def test_winkel_encoder():
           ("GP26", "Encoder 1 (AS5600)") in cfg.pins_belegt(ok))
 
 
+def test_stufenschalter():
+    S = 65536 / 360.0                       # Rohwerte je Grad
+    st = eingaben.Stufen("as5600", 8, 30, null=60000)
+    pos = lambda grad: int(60000 + grad * S) % 65536   # noqa: E731
+    check("Stufen: Stellung 1 an der Nullstellung", st.update(pos(0)) == 0)
+    check("Stufen: 3. Stellung bei 60 Grad, ueber den Nulldurchgang",
+          st.update(pos(60)) == 2)
+    for g in (74, 76, 74, 76):              # zwischen 3 und 4 zappeln
+        st.update(pos(g))
+    check("Stufen: Hysterese, kein Zappeln", st.s == 2)
+    check("Stufen: letzte Stellung", st.update(pos(210)) == 7)
+    check("Stufen: ueber den Anschlag hinaus bleibt die letzte", st.update(pos(260)) == 7)
+    check("Stufen: Rest des Kreises vor Stellung 1 -> Stellung 1",
+          st.update(pos(-40)) == 0)
+    rund = eingaben.Stufen("as5600", 8, null=0)     # 8 x 45 Grad = ganzer Kreis
+    rund.update(int(315 * S))
+    check("Stufen: ganzer Kreis, von 8 nach 1", rund.update(int(359 * S)) == 0)
+    um = eingaben.Stufen("as5600", 8, 30, null=60000, umkehren=True)
+    check("Stufen: umgekehrt", um.update(pos(-60)) == 2)
+    kette = eingaben.Stufen("pot", 5)
+    check("Stufen: Widerstandskette", kette.update(0) == 0 and kette.update(32768) == 2
+          and kette.update(65535) == 4)
+
+    alt = sys.modules.get("analogio")
+    werte = [pos(0)]
+
+    class Adc:
+        @property
+        def value(self):
+            return werte[0]
+
+    sys.modules["analogio"] = types.SimpleNamespace(AnalogIn=lambda pin: Adc())
+    try:
+        c = cfg.normalize({"buttons": [{"pin": "GP2"}],
+                           "selectors": [{"type": "as5600", "pin": "GP26", "positions": 8,
+                                          "step": 30, "zero": 60000, "btn": 10}]})
+        bl, n, f = cfg.button_layout(c)
+        check("Stufen: Buttonblock 10..17", bl[("stufen", 0)] == 9 and not f)
+        e = eingaben.Eingaben(c, bl, n, lambda x: x)
+        e.update(0.0)
+        check("Stufen: Stellung 1 gedrueckt, sonst keiner",
+              e.aus[9] == 1 and sum(e.aus[9:17]) == 1)
+        werte[0] = pos(90)
+        e.update(0.1)
+        check("Stufen: Stellung 4", e.aus[12] == 1 and sum(e.aus[9:17]) == 1)
+        check("Stufen: Live-Werte", e.stufen_json() == [[pos(90), 4]])
+    finally:
+        if alt is None:
+            del sys.modules["analogio"]
+        else:
+            sys.modules["analogio"] = alt
+
+    p = pins_fuer("rp2040")
+    ok = cfg.normalize({"config_pin": "GP15", "selectors": [{"pin": "GP26", "positions": 8}]})
+    check("Stufen: gueltig %s" % cfg.validate(ok, p.pin_id, p.analog_ok),
+          not cfg.validate(ok, p.pin_id, p.analog_ok))
+    zuviel = cfg.normalize({"config_pin": "GP15",
+                            "selectors": [{"pin": "GP26", "positions": 8, "step": 60}]})
+    check("Stufen: zu grosser Abstand erkannt",
+          any("Umdrehung" in x for x in cfg.validate(zuviel, p.pin_id, p.analog_ok)))
+
+
 def test_telemetrie():
     p = FakePort()
     t = Telemetrie(p, 2.0)
