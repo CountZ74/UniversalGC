@@ -158,9 +158,11 @@ def plan(quelle, art):
 STRG_C, STRG_D = b"\x03", b"\x04"
 KENNUNG = "UGC:"
 
-# Einzeiler fuer die REPL: Name der Belegung oder '-' (keine UniversalGC)
-ABFRAGE = ("exec(\"try:\\n import cfg\\n print('%s'+str(cfg.load(leise=True)[0]"
-           ".get('name')))\\nexcept Exception:\\n print('%s-')\")" % (KENNUNG, KENNUNG))
+# Einzeiler fuer die REPL: 'L' oder 'S' (Laufwerk fuer den PC sichtbar oder
+# gesperrt), dann der Name der Belegung - oder '-' (keine UniversalGC)
+ABFRAGE = ("exec(\"try:\\n import cfg,storage\\n l=storage.getmount('/').readonly\\n"
+           " print('%s'+('L' if l else 'S')+str(cfg.load(leise=True)[0].get('name')))"
+           "\\nexcept Exception:\\n print('%s-')\")" % (KENNUNG, KENNUNG))
 WARTUNG = "import merker;merker.wartung()"
 
 
@@ -197,6 +199,8 @@ class Konsole:
         self.s.write(text.encode() + b"\r")
         return self.lesen(dauer)
 
+    laufwerk = False      # nach name(): Laufwerk gerade fuer den PC sichtbar?
+
     def name(self):
         """Name der Belegung, '' bei UniversalGC ohne Namen, None wenn das
         Geraet nicht antwortet oder keine UniversalGC ist."""
@@ -207,7 +211,10 @@ class Konsole:
             zeile = zeile.strip()
             if zeile.startswith(KENNUNG) and "+str(" not in zeile:
                 rest = zeile[len(KENNUNG):]
-                return None if rest == "-" else rest
+                if rest == "-":
+                    return None
+                self.laufwerk = rest[:1] == "L"
+                return rest[1:]
         return None
 
     def weiterlaufen(self):
@@ -216,8 +223,9 @@ class Konsole:
 
 
 def seriell_suchen():
-    """Liste (port, name) aller Boards mit UniversalGC an seriellen Ports.
-    Angehaltene Boards werden wieder gestartet. Ohne pyserial: None."""
+    """Liste (port, name, laufwerk) aller Boards mit UniversalGC an seriellen
+    Ports; laufwerk = CIRCUITPY ist gerade sichtbar. Angehaltene Boards werden
+    wieder gestartet. Ohne pyserial: None."""
     try:
         import serial
         from serial.tools import list_ports
@@ -233,7 +241,7 @@ def seriell_suchen():
                 k = Konsole(s)
                 n = k.name()
                 if n is not None:
-                    gefunden.append((p.device, n or "ohne Namen"))
+                    gefunden.append((p.device, n or "ohne Namen", k.laufwerk))
                 k.weiterlaufen()
         except Exception:
             continue          # belegt (Thonny offen?) oder kein REPL-Port
@@ -281,32 +289,24 @@ def auf_laufwerk_warten(vorher, sekunden=30):
     return None
 
 
-def ueber_konsole():
-    """Board ueber die serielle Konsole in den Wartungsmodus schicken und auf
-    sein Laufwerk warten. Rueckgabe: Pfad oder None."""
+PYSERIAL_FEHLT = ("  pyserial fehlt (Arch: 'sudo pacman -S python-pyserial', Debian/"
+                  "Ubuntu: 'sudo apt install python3-serial', Windows: 'py -m pip "
+                  "install pyserial') - Boards ohne Laufwerk werden nicht gefunden.")
+
+
+def nur_konsole():
+    """Boards, die nur ueber die Konsole erreichbar sind (Laufwerk gesperrt).
+    Liste (port, name); None ohne pyserial."""
     print("Suche Boards ueber die serielle Konsole ...")
     boards = seriell_suchen()
     if boards is None:
-        print("  pyserial fehlt (Arch: 'sudo pacman -S python-pyserial', Debian/"
-              "Ubuntu: 'sudo apt install python3-serial', sonst 'pip install "
-              "pyserial') - Wartungsmodus bitte von Hand.")
         return None
-    if not boards:
-        print("  Kein Board mit UniversalGC gefunden (Thonny geschlossen? Board "
-              "eingesteckt?).")
-        return None
-    if len(boards) == 1:
-        port, name = boards[0]
-    else:
-        print("Mehrere Boards gefunden:")
-        for i, (p, n) in enumerate(boards, 1):
-            print("  %d) %s  (%s)" % (i, n, p))
-        if not sys.stdin.isatty():
-            return None
-        wahl = input("Welches? Nummer eingeben (leer = Abbruch): ").strip()
-        if not (wahl.isdigit() and 1 <= int(wahl) <= len(boards)):
-            return None
-        port, name = boards[int(wahl) - 1]
+    return [(port, name) for port, name, laufwerk in boards if not laufwerk]
+
+
+def ueber_konsole(port, name):
+    """Board in den Wartungsmodus schicken und auf sein Laufwerk warten.
+    Rueckgabe: Pfad oder None."""
     print("Starte '%s' (%s) mit Laufwerk neu ..." % (name, port))
     vorher = laufwerk_suchen()
     fehler = wartung_ausloesen(port)
@@ -491,10 +491,17 @@ def beschreibung(pfad):
 
 
 def auswaehlen(gefunden):
-    """Bei mehreren Laufwerken nachfragen. Ohne Terminal: Abbruch mit Liste."""
-    print("Mehrere CIRCUITPY-Laufwerke gefunden:")
+    """Bei mehreren Zielen nachfragen. Ohne Terminal: Abbruch mit Liste.
+
+    Ein Ziel ist ein Laufwerkspfad oder ein Tupel (port, name) fuer ein Board,
+    das erst ueber die Konsole mit Laufwerk neu gestartet werden muss."""
+    print("Mehrere Boards gefunden:")
     for i, g in enumerate(gefunden, 1):
-        print("  %d) %s\n     %s" % (i, g, beschreibung(g)))
+        if isinstance(g, tuple):
+            print("  %d) %s  (%s)\n     ohne Laufwerk - wird ueber die Konsole "
+                  "mit Laufwerk neu gestartet" % (i, g[1], g[0]))
+        else:
+            print("  %d) %s\n     %s" % (i, g, beschreibung(g)))
     if not sys.stdin.isatty():
         print("Bitte mit --ziel PFAD waehlen.")
         return None
@@ -583,10 +590,14 @@ def main(argv=None):
         ziel = a.ziel
     else:
         gefunden = [] if a.seriell else laufwerk_suchen()
-        if not gefunden and not a.trocken:
-            z = ueber_konsole()
-            if z:
-                gefunden = [z]
+        # Dazu alle Boards, deren Laufwerk gesperrt ist - auch wenn schon eins
+        # sichtbar ist, sonst gaebe es fuer die anderen keine Auswahl.
+        if not a.trocken or a.seriell:
+            konsole = nur_konsole()
+            if konsole is None:
+                print(PYSERIAL_FEHLT)
+            else:
+                gefunden += konsole
         if not gefunden:
             print("Kein Laufwerk CIRCUITPY gefunden.\n"
                   "  - Frisches Board: ist CircuitPython drauf und das Laufwerk eingehaengt?\n"
@@ -600,6 +611,10 @@ def main(argv=None):
                 return 1
         else:
             ziel = gefunden[0]
+        if isinstance(ziel, tuple):
+            ziel = ueber_konsole(*ziel)
+            if ziel is None:
+                return 1
     if not os.path.isdir(ziel):
         print("%s ist kein Verzeichnis." % ziel)
         return 1

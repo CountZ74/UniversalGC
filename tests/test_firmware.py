@@ -799,7 +799,8 @@ class FakeRepl:
     """Verhaelt sich wie die Konsole von CircuitPython: laufendes code.py,
     Strg+C, 'Press any key', REPL mit Echo."""
 
-    def __init__(self, name="Lenkrad", merker=True):
+    def __init__(self, name="Lenkrad", merker=True, laufwerk=False):
+        self.laufwerk = laufwerk
         self.puffer = b""
         self.zustand = "laeuft"
         self.name = name
@@ -840,7 +841,9 @@ class FakeRepl:
     def _ausfuehren(self, cmd):
         import installieren as inst
         if cmd == inst.ABFRAGE:
-            return ("UGC:%s\r\n" % self.name).encode() if self.name else b"UGC:-\r\n"
+            if not self.name:
+                return b"UGC:-\r\n"
+            return ("UGC:%s%s\r\n" % ("L" if self.laufwerk else "S", self.name)).encode()
         if cmd == inst.WARTUNG:
             if not self.merker:
                 return b"ImportError: no module named 'merker'\r\n"
@@ -854,7 +857,10 @@ def test_konsole():
     f = FakeRepl("Lenkrad")
     k = inst.Konsole(f, warte=lambda s: None)
     k.lesen = lambda dauer, k=k: k.s.read(k.s.in_waiting).decode()
-    check("Konsole: Name der Belegung", k.name() == "Lenkrad")
+    check("Konsole: Name der Belegung", k.name() == "Lenkrad" and not k.laufwerk)
+    kl = inst.Konsole(FakeRepl("Buttonbox", laufwerk=True), warte=lambda s: None)
+    kl.lesen = lambda dauer, k=kl: k.s.read(k.s.in_waiting).decode()
+    check("Konsole: sichtbares Laufwerk erkannt", kl.name() == "Buttonbox" and kl.laufwerk)
     k.weiterlaufen()
     check("Konsole: danach weiterlaufen (Strg+D)", f.neu_geladen and f.zustand == "laeuft")
     f2 = FakeRepl(None)
@@ -900,6 +906,36 @@ def test_konsole():
         FakeRepl.in_waiting = property(lambda self: len(self.puffer))
     check("Konsole: Echo der Abfrage ist kein Treffer",
           "UGC:" in inst.ABFRAGE and not inst.ABFRAGE.startswith("UGC:"))
+
+
+def test_installieren_auswahl_gemischt():
+    """Ein Board mit sichtbarem Laufwerk darf die anderen nicht verdecken."""
+    import builtins
+    import installieren as inst
+    alt = (inst.laufwerk_suchen, inst.seriell_suchen, inst.ueber_konsole,
+           builtins.input, sys.stdin)
+    gewaehlt = []
+    try:
+        inst.laufwerk_suchen = lambda: ["/media/CIRCUITPY"]
+        # Buttonbox mit sichtbarem Laufwerk (steht schon in der Liste),
+        # Pedale nur ueber die Konsole erreichbar
+        inst.seriell_suchen = lambda: [("/dev/ttyACM0", "Buttonbox", True),
+                                       ("/dev/ttyACM2", "Pedale", False)]
+
+        def konsole(port, name):
+            gewaehlt.append((port, name))
+            return None                    # hier abbrechen, nichts kopieren
+        inst.ueber_konsole = konsole
+        sys.stdin = types.SimpleNamespace(isatty=lambda: True)
+        fragen = []
+        builtins.input = lambda t: fragen.append(t) or "2"
+        inst.main(["pedale"])
+        check("Auswahl gemischt: es wurde gefragt", len(fragen) == 1)
+        check("Auswahl gemischt: Pedale ueber die Konsole gewaehlt",
+              gewaehlt == [("/dev/ttyACM2", "Pedale")])
+    finally:
+        (inst.laufwerk_suchen, inst.seriell_suchen, inst.ueber_konsole,
+         builtins.input, sys.stdin) = alt
 
 
 def test_bundle_eintraege():

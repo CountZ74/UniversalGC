@@ -113,8 +113,9 @@ Beim ESP32-S3 beachten:
 **Update eines Boards im Normalbetrieb** (Laufwerk aus): einfach `python3 installieren.py`.
 Ist `pyserial` installiert, sucht das Skript das Board über seinen
 COM-Port, schickt es in den Wartungsmodus, wartet auf `CIRCUITPY` und installiert. Thonny
-dabei schließen – es belegt den Port. Bei mehreren Boards fragt das Skript nach; mit
-`--seriell` geht das auch, wenn schon ein anderes Laufwerk sichtbar ist. Ohne `pyserial`
+dabei schließen – es belegt den Port. Bei mehreren Boards fragt das Skript nach – die
+Liste enthält sichtbare Laufwerke und Boards ohne Laufwerk gemeinsam; `--seriell` zeigt
+nur die über die Konsole. Ohne `pyserial`
 oder bei alter Firmware: Wartungsmodus von Hand (Konfigurationstaster beim Einstecken
 halten oder Weboberfläche → „Neustart mit Laufwerk“).
 
