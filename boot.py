@@ -176,6 +176,14 @@ except Exception as e:
 
 # --- HID ---------------------------------------------------------------------
 
+# Windows zeigt bei Geraeten mit mehreren USB-Funktionen (Laufwerk, Konsole,
+# HID) in den Gamecontroller-Einstellungen den Namen der HID-Schnittstelle -
+# ohne das hier "CircuitPython HID" oder gar "0-Achsen 16-Taste Geraet".
+try:
+    usb_hid.set_interface_name(cfg.hid_name(c))
+except Exception as e:                       # aeltere CircuitPython-Versionen
+    meldungen.append("HID-Name nicht gesetzt: %s" % e)
+
 try:
     desc = cfg.descriptor(c)
     laenge = cfg.report_laenge(c)

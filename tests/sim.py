@@ -168,6 +168,7 @@ class HidDevice:
 
 
 usb_hid = mod("usb_hid", Device=HidDevice, devices=[])
+usb_hid.set_interface_name = lambda n: print("HID-Name:", n)
 usb_hid.enable = lambda devs: (setattr(usb_hid, "devices", list(devs)),
                                USB.update(hid=bool(devs)))
 mod("usb_cdc", enable=lambda **kw: USB.update(daten=kw.get("data", False)), data=None)

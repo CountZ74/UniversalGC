@@ -217,6 +217,16 @@ def test_pc_skripte_mit_encoding():
     check("PC-Skripte: Textdateien mit encoding", True)
 
 
+def test_hid_name():
+    check("HID-Name: Umlaute umgeschrieben",
+          cfg.hid_name(cfg.normalize({"usb": {"product": "Lenkrad Zündung ß"}})) == "Lenkrad Zuendung ss")
+    check("HID-Name: Rueckfall auf name",
+          cfg.hid_name(cfg.normalize({"name": "Pedale", "usb": {"product": ""}})) == "Pedale")
+    check("HID-Name: nie leer", cfg.hid_name(cfg.normalize({"usb": {"product": "€€"}})) == "UniversalGC")
+    check("HID-Name: hoechstens 126 Zeichen",
+          len(cfg.hid_name(cfg.normalize({"usb": {"product": "x" * 300}}))) == 126)
+
+
 def test_simulation_controls():
     c = cfg.normalize({"config_pin": "GP15", "axes": [
         {"type": "pot", "pin": "GP26", "usage": "accelerator"},

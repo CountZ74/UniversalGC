@@ -372,6 +372,23 @@ def _bloecke(usages):
     return out
 
 
+def ascii_name(text, laenge=126):
+    """Fuer USB-Namen, die nur ASCII erlauben: Umlaute umschreiben, Rest weg."""
+    ersatz = {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss"}
+    out = ""
+    for ch in str(text):
+        if ch in ersatz:
+            out += ersatz[ch]
+        elif " " <= ch <= "~":
+            out += ch
+    return out.strip()[:laenge]
+
+
+def hid_name(c):
+    """So soll das Geraet in den Windows-Gamecontroller-Einstellungen heissen."""
+    return ascii_name(c["usb"].get("product") or c.get("name") or "") or "UniversalGC"
+
+
 def report_id(c):
     """Report-ID fuer USB. 0 = ohne (wie die alten Firmwares) - fuer
     Programme, die die Reports selbst auslesen und sich am zusaetzlichen
