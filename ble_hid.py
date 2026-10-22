@@ -39,6 +39,19 @@ def _dauer(name, t0):
 APPEARANCE = {0x04: 0x03C3, 0x05: 0x03C4}    # Joystick, Gamepad
 
 
+def pnp_id(c):
+    """PnP-ID fuer den Device-Information-Service: dieselbe VID/PID wie am
+    USB. Ohne sie meldet adafruit_ble 0000/0000, und Windows nennt das Geraet
+    "0-Achse 16-Taste Geraet". (Quelle 2 = USB-IF-Hersteller-ID)"""
+    import sys
+    vid = 0x303A if "esp" in sys.platform.lower() else 0x239A   # Espressif / Adafruit
+    try:
+        pid = int(c["usb"].get("pid", -1))
+    except (TypeError, ValueError):
+        pid = -1
+    return (0x02, vid, pid if 0 <= pid <= 0xFFFF else 0x0000, 0x0100)
+
+
 class BleHid:
     def __init__(self, c, descriptor, usage):
         self.c = c
@@ -73,7 +86,8 @@ class BleHid:
         try:
             hid = HIDService(hid_descriptor=self.desc)
             DeviceInfoService(manufacturer=self.c["usb"].get("manufacturer", "UniversalGC"),
-                              model_number=self.c.get("name", "UniversalGC"))
+                              model_number=self.c.get("name", "UniversalGC"),
+                              pnp_id=pnp_id(self.c))
             self.adv = ProvideServicesAdvertisement(hid)
             self.adv.appearance = APPEARANCE.get(self.usage, 0x03C3)
             self.radio = adafruit_ble.BLERadio()

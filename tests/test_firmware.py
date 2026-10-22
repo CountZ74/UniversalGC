@@ -1164,6 +1164,19 @@ def test_usb_ohne_abfrage_pausiert():
         app.time = time
 
 
+def test_ble_pnp_id():
+    import ble_hid
+    alt = sys.platform
+    try:
+        sys.platform = "Espressif ESP32-S3"
+        check("BLE PnP-ID: Espressif-VID und PID aus der Belegung",
+              ble_hid.pnp_id({"usb": {"pid": 0x4715}}) == (2, 0x303A, 0x4715, 0x0100))
+        sys.platform = "RP2350"
+        check("BLE PnP-ID: ohne PID 0", ble_hid.pnp_id({"usb": {"pid": -1}})[1:3] == (0x239A, 0))
+    finally:
+        sys.platform = alt
+
+
 def test_leds():
     check("farbe", leds.farbe("#ff8000") == (255, 128, 0))
     check("bereich", leds.bereich("0-2,5,99", 10) == [0, 1, 2, 5])
