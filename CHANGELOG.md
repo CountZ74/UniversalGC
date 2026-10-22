@@ -23,7 +23,8 @@ automated tests and the simulator, but not yet run on hardware.
 - **"Check" warns about lost axes** – the web interface knows how Linux (`hid-input.c`)
   and Windows (DirectInput) map axes and warns when an axis is dropped or two collide
   (e.g. Sim brake and Rz on Windows). Sim clutch, toe brake, aileron, elevator and
-  collective are marked as unsupported by both. ✓ (Sim clutch confirmed on Linux and Windows)
+  collective are marked as unsupported by both. ✓ (Sim clutch missing on Linux and Windows,
+  Sim brake + Rz collision on Windows confirmed on hardware)
 - **Option: USB reports without report ID** (`options.report_id = false`) – byte-identical
   to the old firmwares, for programs that misread the report ID. ○
 - **Installer: one list for all boards** – visible drives and boards reachable only over
