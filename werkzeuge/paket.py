@@ -53,7 +53,7 @@ stehen unter der MIT-Lizenz. UniversalGC selbst: GPL-3.0-or-later (LICENSE).
 
 
 def version():
-    with open(os.path.join(REPO, "app.py")) as f:
+    with open(os.path.join(REPO, "app.py"), encoding="utf-8") as f:
         m = re.search(r'^VERSION = "([^"]+)"', f.read(), re.M)
     return m.group(1) if m else "0"
 
@@ -112,9 +112,9 @@ def main():
               "uebernahme.py", "LICENSE"):
         shutil.copy(os.path.join(REPO, n), ordner)
     shutil.copytree(os.path.join(REPO, "presets"), os.path.join(ordner, "presets"))
-    with open(os.path.join(ordner, "VERSION"), "w") as f:
+    with open(os.path.join(ordner, "VERSION"), "w", encoding="utf-8") as f:
         json.dump({"universalgc": v, "circuitpython": cp, "mpy_cross": kennung}, f)
-    with open(os.path.join(ordner, "LIESMICH.txt"), "w") as f:
+    with open(os.path.join(ordner, "LIESMICH.txt"), "w", encoding="utf-8") as f:
         f.write(LIESMICH.format(v=v, cp=cp))
 
     if a.bundle:

@@ -295,6 +295,6 @@ def dateien_lesen(ziel):
     for n in ALT_DATEIEN:
         p = os.path.join(ziel, n)
         if os.path.isfile(p):
-            with open(p, errors="replace") as f:
+            with open(p, encoding="utf-8", errors="replace") as f:
                 out[n] = f.read()
     return out

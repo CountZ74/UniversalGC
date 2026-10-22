@@ -459,7 +459,7 @@ def laufwerk_suchen():
                            if n.upper().startswith("CIRCUITPY")]
     else:
         try:
-            with open("/proc/mounts") as f:
+            with open("/proc/mounts", encoding="utf-8", errors="replace") as f:
                 for zeile in f:
                     teile = zeile.split()
                     if len(teile) > 1:
@@ -477,12 +477,12 @@ def beschreibung(pfad):
     """'Lenkrad - yd_esp32_s3_n16r8, CircuitPython 10.3.1' fuer die Auswahl."""
     name = board = version = None
     try:
-        with open(os.path.join(pfad, "device.json")) as f:
+        with open(os.path.join(pfad, "device.json"), encoding="utf-8") as f:
             name = json.load(f).get("name")
     except (OSError, ValueError, AttributeError):
         pass
     try:
-        with open(os.path.join(pfad, "boot_out.txt"), errors="replace") as f:
+        with open(os.path.join(pfad, "boot_out.txt"), encoding="utf-8", errors="replace") as f:
             version, board, _ = boot_out_lesen(f.read())
     except OSError:
         pass
@@ -607,7 +607,7 @@ def main(argv=None):
     # Board
     version = board = chip = None
     try:
-        with open(os.path.join(ziel, "boot_out.txt"), errors="replace") as f:
+        with open(os.path.join(ziel, "boot_out.txt"), encoding="utf-8", errors="replace") as f:
             version, board, chip = boot_out_lesen(f.read())
     except OSError:
         pass
@@ -618,7 +618,7 @@ def main(argv=None):
 
     if art == "paket":
         try:
-            with open(os.path.join(HIER, "VERSION")) as f:
+            with open(os.path.join(HIER, "VERSION"), encoding="utf-8") as f:
                 paket = json.load(f)
         except (OSError, ValueError):
             paket = {}
@@ -661,13 +661,13 @@ def main(argv=None):
     if alt_art:
         pass                    # Belegung kommt aus der alten Firmware
     elif a.vorlage and (not vorhanden or a.ueberschreiben):
-        with open(os.path.join(HIER, "presets", a.vorlage + ".json")) as f:
+        with open(os.path.join(HIER, "presets", a.vorlage + ".json"), encoding="utf-8") as f:
             belegung = json.load(f)
         print("Belegung:  Vorlage '%s' wird device.json%s" %
               (a.vorlage, " (ersetzt die vorhandene)" if vorhanden else ""))
     elif vorhanden:
         try:
-            with open(dj) as f:
+            with open(dj, encoding="utf-8") as f:
                 belegung = json.load(f)
         except (OSError, ValueError):
             belegung = None

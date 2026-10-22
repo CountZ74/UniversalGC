@@ -205,6 +205,18 @@ def test_achsen_hinweise():
           len(w) == 1 and w[0].startswith("Linux"))
 
 
+def test_pc_skripte_mit_encoding():
+    """Windows liest Textdateien sonst als cp1252 - Umlaute aus device.json
+    oder settings.py wuerden bei Installation und Uebernahme verdorben."""
+    import re
+    for n in ("installieren.py", "uebernahme.py", os.path.join("werkzeuge", "paket.py")):
+        for nr, zeile in enumerate(open(os.path.join(FW, n), encoding="utf-8"), 1):
+            if re.search(r"\bopen\(", zeile) and "urlopen" not in zeile \
+                    and "encoding=" not in zeile and not re.search(r"[\"']\w*b\w*[\"']", zeile):
+                check("%s:%d oeffnet Text ohne encoding" % (n, nr), False)
+    check("PC-Skripte: Textdateien mit encoding", True)
+
+
 def test_simulation_controls():
     c = cfg.normalize({"config_pin": "GP15", "axes": [
         {"type": "pot", "pin": "GP26", "usage": "accelerator"},
