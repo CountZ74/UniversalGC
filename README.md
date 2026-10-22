@@ -1,327 +1,358 @@
 # UniversalGC
 
-Universelle Gamecontroller-Firmware für CircuitPython, nach dem Vorbild von FreeJoy:
-**Pedale, Buttonbox, Lenkrad, Flugsim-Panel, Arcade-Stick** – was an welchem Pin hängt,
-steht in `device.json` und wird über die Weboberfläche des Geräts eingestellt.
+🇬🇧 English · 🇩🇪 [Deutsch](README.de.md)
 
-Entstanden aus zwei Einzel-Firmwares, die damit abgelöst werden:
-[sim-pedale](https://github.com/CountZ74/sim-pedale) (Pedale v9.9) und die Buttonbox v2.1.
-Deren am Aufbau ausgemessene Feinheiten – Wraparound-Kalibrierung, Wägezelle über PIO,
-Rumble im slow-decay-Verfahren, Logikbuttons – sind übernommen. Verweise wie
-„Pedale v9.4“ in Kommentaren beziehen sich auf die Versionsgeschichte dort.
+**A universal game controller firmware for CircuitPython, in the spirit of FreeJoy.**
+Pedals, button boxes, steering wheels, flight sim panels, arcade sticks – what is wired to
+which pin lives in `device.json` and is configured **in the browser**, over a Wi-Fi
+access point the device opens itself. No compiler, no flashing tool, no PC software.
 
-## Was geht
+- Runs on **Raspberry Pi Pico W / Pico 2 W** and **ESP32-S3** (with Bluetooth LE)
+- **Pin finder:** press your buttons, turn your encoders – the device tells you what is
+  connected where
+- Buttons, matrices, shift registers, encoders, pots, Hall sensors, AS5600, load cells
+- Logic buttons and LEDs driven by **SimHub telemetry**, WS2812 rev lights, rumble motors
+- Safety net: every configuration is checked before saving, and if a new one fails to
+  start twice, the previous one comes back
 
-| Funktion | Details |
+> **Language note:** the web interface, the installer messages and the code comments are
+> currently in **German**. The configuration keys in `device.json` are English. Help with
+> translations is welcome.
+
+UniversalGC grew out of two single-purpose firmwares it replaces:
+[sim-pedale](https://github.com/CountZ74/sim-pedale) (pedals v9.9) and a button box v2.1.
+Everything that was measured and tuned on real hardware there – wrap-around calibration,
+load cell via PIO, slow-decay rumble, logic buttons – carries over. Comments such as
+"Pedale v9.4" refer to that version history.
+
+## Features
+
+| Feature | Details |
 |---|---|
-| Taster | direkt gegen GND, Betriebsart *normal*, *Impuls* (Kippschalter → Tastendruck bei jeder Änderung) oder *Umschalter*, optional Öffner |
-| Tastenmatrix | beliebig viele Zeilen × Spalten, mit Dioden (Richtung wählbar) |
-| Schieberegister | 74HC165-Ketten, je 8 Eingänge, für viele Tasten an wenigen Pins |
-| Encoder | je Raste ein Tastendruck rechts/links, schnelles Drehen wird gepuffert; oder als Achse |
-| Achsen (16 bit) | Poti/Hall, AS5600 (Wraparound), Wägezelle HX711 (PIO auf dem Pico), Encoder |
-| HID-Achsen | X, Y, Z, Rx, Ry, Rz, Slider, Dial – oder Simulation Controls: Gas, Bremse, Kupplung, Lenkung, Schubhebel, Seitenruder, Fußbremse, Quer-/Höhenruder, Kollektiv |
-| Kennlinien | je Achse im Browser zeichnen |
-| Logikbuttons | `AND(b9,b10,NOT(motor))`, `GT(rpm,7000)`, `GT(a0,90)` … mit SimHub-Telemetrie |
-| LEDs | Dauerlicht/Blinken per Logikausdruck |
-| WS2812 | Drehzahlband mit Schaltblitz, Regeln für Pit-Limiter, Flaggen usw. |
-| Rumble | DRV8871 mit Totmannschaltung und Not-Aus, Effekte aus SimHub ShakeIt |
-| Bluetooth LE | nur ESP32-S3 (siehe unten) |
-| Sicherheitsnetz | Pins werden vor dem Speichern geprüft, alte Belegung bleibt als Sicherung; startet die neue zweimal nicht, kommt die alte zurück |
+| Buttons | wired to GND; modes *normal*, *pulse* (toggle switch → one press on every flip) or *toggle* (push button acts as a switch); normally-closed contacts supported |
+| Button matrix | any number of rows × columns, with diodes (either direction) |
+| Shift registers | 74HC165 chains, 8 inputs each – many buttons on few pins |
+| Encoders | one press per detent, left/right; fast turns are buffered so the game sees every step; or used as an axis |
+| AS5600 encoder | a 3D-printed detent knob over an AS5600 instead of a mechanical encoder – **one analog pin**, contactless, no bounce |
+| Rotary selector | fixed positions on **one analog pin** (AS5600 + detent knob, or a rotary switch with a resistor ladder): one button per position, exactly one pressed |
+| Axes (16 bit) | pot/Hall, AS5600 (wrap-around), HX711 load cell (PIO on the Pico), encoder |
+| Pot filtering | smoothing and hysteresis so noisy pots stay still; optional **center position** with deadzone around the middle |
+| HID axes | X, Y, Z, Rx, Ry, Rz, Slider, Dial – or Simulation Controls (accelerator, brake, steering …, see below) |
+| Response curves | drawn per axis in the browser |
+| Logic buttons | `AND(b9,b10,NOT(motor))`, `GT(rpm,7000)`, `GT(a0,90)` … with SimHub telemetry |
+| LEDs | on/blink driven by logic expressions |
+| WS2812 | rev light bar with shift flash, rules for pit limiter, flags etc. |
+| Rumble | DRV8871 with dead-man timeout and emergency stop, effects from SimHub ShakeIt |
+| Bluetooth LE | ESP32-S3 only (see below) |
+| Config access | dedicated config button **or** a button combination held for a few seconds |
+| Safety net | pins are validated before saving, the old configuration is kept as a backup and restored if the new one fails to start twice |
 
-## Geplant
+### Planned
 
-Für allgemeine Gamecontroller (siehe Issues): mittenzentrierte Achsen für Joysticks und
-Thumbsticks, Hat-Switch/POV, Shift-Ebene, Ausgabe als Tastatur/Maus.
+For general-purpose controllers (see Issues): hat switch / POV, shift layer, keyboard/mouse
+output.
 
-## Simulation Controls oder Rx/Ry/Rz?
+## Which board?
 
-Jede Achse kann sich als normale Joystick-Achse (X … Rz, Slider) oder als
-*Simulation Control* melden (`"usage": "brake"` usw., im Browser „Sim: Bremse“). Letzteres
-beschreibt Pedale und Lenkrad treffender, aber nicht jedes Spiel wertet diese Achsen aus,
-und Windows ordnet sie anders zu. Vorgabe in den Vorlagen bleibt deshalb Rx/Ry/Rz – das
-läuft nachweislich. Zum Ausprobieren die HID-Achse im Browser umstellen, speichern, im
-Spiel testen; bei Problemen zurückstellen. Wie bei jeder Änderung am Aufbau die Achsen im
-Spiel danach neu zuordnen.
-
-Was die Systeme daraus machen (zwei Achsen auf demselben Ziel: die zweite fällt weg):
-
-| Achse | Linux (`hid-input.c`) | Windows (DirectInput, laut MAME) |
-|---|---|---|
-| X, Y, Z, Rx, Ry, Rz | gleichnamig | gleichnamig |
-| Slider / Dial | ABS_THROTTLE / ABS_RUDDER | Slider (zweimal vorhanden) |
-| Sim: Gas | ABS_GAS | **Y** |
-| Sim: Bremse | ABS_BRAKE | **Rz** |
-| Sim: Lenkung | ABS_WHEEL | **X** |
-| Sim: Schubhebel | ABS_THROTTLE | Slider |
-| Sim: Seitenruder | ABS_RUDDER | **Rz** |
-| Sim: Kupplung, Fußbremse, Quer-/Höhenruder, Kollektiv | – fehlt | – fehlt (am Gerät bestätigt für die Kupplung) |
-
-Also: Sim-Gas und Sim-Bremse zusammen mit Rz oder Y kollidieren unter Windows. „Prüfen“
-in der Weboberfläche warnt bei solchen Fällen. Kupplung am besten als **Slider** melden.
-
-## Welcher Chip?
-
-| Board | USB-Joystick | Bluetooth | Einsatz |
+| Board | USB joystick | Bluetooth | Typical use |
 |---|---|---|---|
-| Raspberry Pi Pico W / Pico 2 W | ja | nein (unter CircuitPython kein BLE) | Pedale, Buttonbox |
-| **ESP32-S3** (z. B. DevKitC-1, QT Py ESP32-S3) | ja | **ja** | Lenkrad |
-| ESP32 ohne Zusatz, ESP32-C3 | nein | ja | ungeeignet |
+| Raspberry Pi Pico W / Pico 2 W | yes | no (no BLE under CircuitPython) | pedals, button box |
+| **ESP32-S3** (e.g. DevKitC-1, YD-ESP32-S3, QT Py ESP32-S3) | yes | **yes** | steering wheel |
+| plain ESP32, ESP32-C3 | no | yes | not suitable (no native USB) |
 
-Beim ESP32-S3 beachten:
-- Bluetooth-Verzögerung bestimmt der PC über das Verbindungsintervall (Linux: oft
-  30–50 ms). Kürzer unter Linux, gilt bis zum Neustart, danach neu verbinden:
+Notes for the ESP32-S3:
+- The circuitpython.org web installer asks for your home Wi-Fi and writes it to
+  `settings.toml`. **Comment out `CIRCUITPY_WIFI_SSID`, `CIRCUITPY_WIFI_PASSWORD` and
+  `CIRCUITPY_WEB_API_PASSWORD`** – otherwise CircuitPython connects by itself, its web
+  editor takes port 80 and the UniversalGC access point does not start.
+- Analog inputs are only reliable on **GPIO1–10**. GPIO11–20 (ADC2) do not measure while
+  Wi-Fi is on – the firmware warns about it.
+- GPIO19/20 are USB, GPIO26–37 are usually flash/PSRAM – both are blocked.
+- **Do not use GPIO0 as config button:** held while plugging in, it starts the ROM
+  bootloader.
+- No PIO – a load cell is read by bit-banging (slower).
+- Too few USB endpoints for a second serial port: the ESP32-S3 has 4 IN endpoints,
+  console + data port + joystick would need 5 (CircuitPython would drop into safe mode).
+  Telemetry therefore uses the **single** serial port (the console) – select that port
+  in SimHub.
+- Bluetooth latency depends on the connection interval chosen by the PC (Linux: often
+  30–50 ms). To shorten it on Linux until the next reboot, then reconnect:
   `sudo sh -c 'echo 6 > /sys/kernel/debug/bluetooth/hci0/conn_min_interval'`
-  (6 × 1,25 ms = 7,5 ms). Das Gerät fragt das selbst nicht an – CircuitPython hängt
-  dabei, wenn der PC nicht antwortet.
-- Der Web-Installer von circuitpython.org fragt nach dem Heim-WLAN und schreibt es in
-  `settings.toml`. **Diese Zeilen (`CIRCUITPY_WIFI_SSID`, `CIRCUITPY_WIFI_PASSWORD`,
-  `CIRCUITPY_WEB_API_PASSWORD`) auskommentieren** – sonst verbindet sich CircuitPython
-  selbst, belegt mit seinem Web-Editor Port 80, und der Access Point von UniversalGC
-  startet nicht.
-- Analog nur an **GPIO1–10** zuverlässig. GPIO11–20 (ADC2) messen nicht, solange das WLAN
-  an ist – die Firmware weist darauf hin.
-- GPIO19/20 sind USB, GPIO26–37 hängen meist am Flash/PSRAM – werden gesperrt.
-- **GPIO0 nicht als Konfigurationstaster** nehmen: gedrückt beim Einstecken startet der
-  ROM-Bootloader.
-- Keine PIO – eine Wägezelle läuft dort über Bit-Banging (langsamer).
-- Zu wenig USB-Endpunkte für einen zweiten COM-Port: Der ESP32-S3 kann nur 4 IN-Endpunkte
-  gleichzeitig nutzen, Konsole + Datenkanal + Joystick bräuchten 5 (CircuitPython ginge in
-  den abgesicherten Modus). Die Telemetrie läuft dort deshalb über den **einen** COM-Port
-  (die Konsole) – in SimHub diesen Port eintragen.
+  (6 × 1.25 ms = 7.5 ms). The device does not request it itself – CircuitPython hangs if
+  the host never answers that request.
+- On battery or power bank (no USB host), reports go out over Bluetooth only.
 
 ## Installation
 
-1. CircuitPython auf das Board spielen (https://circuitpython.org/downloads).
-2. **Release-Paket** von der Releases-Seite laden (`UniversalGC-<version>-cp10.zip` für
-   CircuitPython 10.x) und entpacken. Darin sind die Module vorkompiliert – das spart auf
-   dem Pico W spürbar Speicher – und die nötigen Bibliotheken.
-3. Installieren:
+1. Install CircuitPython 10.x on the board (https://circuitpython.org/downloads).
+2. Download the **release package** (`UniversalGC-<version>-cp10.zip`) from the Releases
+   page and unzip it. It contains precompiled modules – which saves noticeable memory on
+   the Pico W – and the required libraries.
+3. Install:
    ```bash
-   python3 installieren.py lenkrad      # mit Vorlage als device.json
-   python3 installieren.py              # nur aktualisieren, Belegung bleibt
-   python3 installieren.py --liste      # Vorlagen anzeigen
+   python3 installieren.py lenkrad      # with a template as device.json (pedale, buttonbox, lenkrad)
+   python3 installieren.py              # update only, configuration is kept
+   python3 installieren.py --liste      # list templates
    ```
-   Das Skript findet `CIRCUITPY` selbst (Linux, macOS, Windows), kopiert in der richtigen
-   Reihenfolge (`boot.py` zuletzt), entfernt veraltete Dateien, holt fehlende Bibliotheken
-   selbst aus dem offiziellen Adafruit-Bundle passend zur CircuitPython-Version (wird in
-   `~/.cache/universalgc` zwischengespeichert; ohne Internet notfalls
-   [circup](https://github.com/adafruit/circup) oder `--bundle ZIP`) und schreibt alles
-   durch, bevor es „Fertig“ meldet. Dasselbe Skript funktioniert auch direkt im
-   Quelltext-Repo (`UniversalGC-main`).
-4. Laufwerk **auswerfen**, abziehen, neu einstecken.
+   On Windows use `py` instead of `python3`.
 
-**Update eines Boards im Normalbetrieb** (Laufwerk aus): einfach `python3 installieren.py`.
-Ist `pyserial` installiert, sucht das Skript das Board über seinen
-COM-Port, schickt es in den Wartungsmodus, wartet auf `CIRCUITPY` und installiert. Thonny
-dabei schließen – es belegt den Port. Bei mehreren Boards fragt das Skript nach – die
-Liste enthält sichtbare Laufwerke und Boards ohne Laufwerk gemeinsam; `--seriell` zeigt
-nur die über die Konsole. Ohne `pyserial`
-oder bei alter Firmware: Wartungsmodus von Hand (Konfigurationstaster beim Einstecken
-halten oder Weboberfläche → „Neustart mit Laufwerk“).
+   The script finds `CIRCUITPY` by itself (Linux, macOS, Windows), copies in the right
+   order (`boot.py` last), removes stale files, fetches missing libraries from the
+   official Adafruit bundle matching your CircuitPython version (cached in
+   `~/.cache/universalgc`; offline: [circup](https://github.com/adafruit/circup) or
+   `--bundle ZIP`) and flushes everything to the drive before it reports success. The
+   same script works straight from the source repository.
+4. **Eject** the drive, unplug, plug back in.
 
-`pyserial` und `circup` installieren:
+**Updating a device in normal operation** (drive hidden): just run `python3 installieren.py`.
+With `pyserial` installed, the script finds boards on their serial ports, restarts them
+with the drive visible, waits for `CIRCUITPY` and installs. Close Thonny first – it
+blocks the port. With several boards connected you get one list containing both visible
+drives and boards reachable only over the console; `--seriell` lists only the latter.
+Without `pyserial`, or with an old firmware: enable maintenance mode by hand (hold the
+config button while plugging in, or web interface → "Neustart mit Laufwerk").
 
 | System | pyserial | circup |
 |---|---|---|
-| Arch / Manjaro | `sudo pacman -S python-pyserial` | `pipx install circup` (meist nicht nötig) |
+| Arch / Manjaro | `sudo pacman -S python-pyserial` | `pipx install circup` (rarely needed) |
 | Debian / Ubuntu | `sudo apt install python3-serial` | `pipx install circup` |
-| Windows / macOS | `pip install pyserial` | `pip install circup` |
+| Windows / macOS | `py -m pip install pyserial` | `pip install circup` |
 
-Unter Linux muss der Benutzer die seriellen Ports benutzen dürfen: Gruppe `uucp`
-(Arch) bzw. `dialout` (Debian/Ubuntu), z. B. `sudo usermod -aG uucp $USER`, danach neu
-anmelden.
+On Linux your user needs access to serial ports: group `uucp` (Arch) or `dialout`
+(Debian/Ubuntu), e.g. `sudo usermod -aG uucp $USER`, then log in again.
 
-Ohne Python geht es auch von Hand: den Inhalt des Pakets auf `CIRCUITPY` kopieren,
-`boot.py` zuletzt, auswerfen. Alte `.py`-Module der Firmware im Hauptverzeichnis vorher
-löschen – sie verdecken die neuen `.mpy` in `lib/`.
+Without Python: copy the package contents to `CIRCUITPY`, `boot.py` last, eject. Delete
+old firmware `.py` modules in the root first – they would shadow the new `.mpy` files in
+`lib/`.
 
-Fehlt beim Start noch eine Pflichtdatei, lässt `boot.py` das Laufwerk an (in
-`boot_out.txt` steht, was fehlt). Ohne `device.json` oder ohne Konfigurationstaster
-bleibt `CIRCUITPY` ebenfalls sichtbar (Einrichtungsmodus). Das Gerät meldet sich dann mit
-8 leeren Buttons, startet den Access Point von selbst (WLAN `UniversalGC-Setup`, Passwort
-`universalgc`) und zeigt im Browser die Vorlagen an.
+If a required file is missing at startup, `boot.py` keeps the drive visible
+(`boot_out.txt` says what is missing). Without `device.json`, or with neither config button
+nor button combination, `CIRCUITPY` also stays visible (setup mode). The device then shows
+up with 8 empty buttons, starts the access point by itself (Wi-Fi `UniversalGC-Setup`,
+password `universalgc`) and offers the templates in the browser.
 
-### Paket selbst bauen
+### Building the package yourself
 
 ```bash
-python3 werkzeuge/paket.py --mpy-cross PFAD/ZU/mpy-cross [--bundle adafruit-…-10.x-mpy-….zip]
+python3 werkzeuge/paket.py --mpy-cross PATH/TO/mpy-cross [--bundle adafruit-…-10.x-mpy-….zip]
 ```
-`mpy-cross` muss von **CircuitPython** stammen (nicht von MicroPython) und zur
-Hauptversion auf dem Board passen; gebaut wird er im CircuitPython-Quelltext mit
-`make -C mpy-cross`. GitHub baut das Paket bei jedem Push automatisch
-(`.github/workflows/paket.yml`) und hängt es bei einem Tag `v…` an ein Release.
+`mpy-cross` must come from **CircuitPython** (not MicroPython) and match the major
+version on the board; build it in the CircuitPython source tree with `make -C mpy-cross`.
+GitHub Actions builds the package on every push (`.github/workflows/paket.yml`) and
+attaches it to a release for every `v…` tag.
 
-### Bibliotheken (`lib/`)
+### Libraries (`lib/`)
 
-Das Release-Paket enthält sie, `installieren.py` kopiert nur die, die die Belegung
-braucht (sonst holt es sie über circup). Von Hand: aus dem Adafruit-Bundle passend zur
-CircuitPython-Version:
+Included in the release package; `installieren.py` copies only what the configuration
+needs. By hand, from the Adafruit bundle matching your CircuitPython version:
 
-| Wofür | Datei/Ordner |
+| For | File/folder |
 |---|---|
-| Wägezelle über PIO (Pico) | `adafruit_pioasm.mpy` |
-| Wägezelle über Bit-Banging (ESP32-S3) | `adafruit_hx711/` |
+| load cell via PIO (Pico) | `adafruit_pioasm.mpy` |
+| load cell via bit-banging (ESP32-S3) | `adafruit_hx711/` |
 | WS2812 | `neopixel.mpy` |
 | Bluetooth (ESP32-S3) | `adafruit_ble/` |
 
-Taster, Matrix, Schieberegister und Encoder brauchen nichts – `keypad` und `rotaryio`
-sind eingebaut.
+Buttons, matrix, shift registers and encoders need nothing – `keypad` and `rotaryio` are
+built in.
 
-**Speicher:** Auf dem Pico W wird es mit WLAN, vielen Achsen und WS2812 eng – dann das
-Release-Paket mit den vorkompilierten Modulen benutzen. Die Statusseite zeigt den freien
-Speicher.
+**Memory:** with Wi-Fi, many axes and WS2812 the Pico W gets tight – use the release
+package with precompiled modules. The status page shows free memory.
 
-## Bedienung
+## Usage
 
-- **Konfigurationstaster kurz drücken:** WLAN-Access-Point an/aus. Mit dem Handy
-  verbinden, `http://192.168.4.1` öffnen. Der Taster ist zugleich Not-Aus für die
-  Rumble-Motoren.
-- **Wartungsmodus:** Konfigurationstaster beim Einstecken gedrückt halten → `CIRCUITPY`
-  bleibt als Laufwerk sichtbar, dafür kann das Gerät nicht speichern.
-- **Speichern bei sichtbarem Laufwerk:** Ist `CIRCUITPY` gerade für den PC freigegeben
-  (Wartung, Einrichtung oder nach dem Kopieren noch kein echter Neustart), wartet die
-  neue Belegung im NVM. Das Gerät startet neu, meldet sich gleich mit ihr an und
-  schreibt sie als `device.json`. Dafür braucht die neue Belegung einen
-  Konfigurationstaster oder eine Tastenkombination.
-- **Tastenkombination statt Konfigurationstaster:** unter *Belegung* →
-  *Tastenkombination* Buttonnummern eintragen (z. B. `1, 2`), in `device.json`:
-  `"config_combo": {"buttons": [1, 2], "hold": 3}`. Alle gemeinsam `hold` Sekunden
-  halten schaltet den Access Point an/aus. Erlaubt sind Taster, Matrix- und
-  Schieberegister-Eingänge; die Buttons gehen dabei auch an den PC, also eine
-  Kombination wählen, die im Spiel nichts anrichtet. Beim Einstecken gehalten
-  öffnet sie den Wartungsmodus – das geht nur mit direkt angeschlossenen Tastern,
-  sonst über *Wartung* in der Weboberfläche oder `installieren.py --seriell`.
-- **Belegung ändern:** Tab *Belegung* → *Prüfen* → *Speichern & Neustart*. Der PC liest
-  den Aufbau nur beim Einstecken, deshalb der Neustart.
-  Neue Buttonnummern oder Achsen müssen im Spiel einmal neu zugeordnet werden.
-- **Poti-Achsen:** Glättung (`smooth`, Standard 3) und Hysterese (`hyst`, Standard
-  0,5 %) halten rauschende Potis in Ruhe still. Mit **Mittelstellung** (`center`)
-  liegen 50 % in der Mitte, die Totzone wirkt um die Mitte – für Drehregler mit
-  Raste, Trimmung oder Hall-Sticks. Kalibrieren: Mitte setzen, dann bis zu beiden
-  Anschlägen drehen.
-- **AS5600 als Encoder:** Statt eines Drehencoders (Pins A und B) geht ein AS5600 hinter
-  einem Knopf mit Rasten, z. B. gedruckt: 1 Analogpin (`OUT`), berührungslos, prellt
-  nicht. Unter *Belegung → Encoder* Typ „AS5600 + Rastenknopf“ und die Rastenzahl je
-  Umdrehung eintragen. Wie beim Drehencoder gibt jede Raste einen Impuls auf „rechts“
-  bzw. „links“. Beim Einschalten muss der Knopf in einer Raste stehen.
-- **Stufenschalter:** Drehschalter mit festen Stellungen an *einem* Analogpin – je
-  Stellung ein Button, immer genau einer gedrückt. Entweder ein AS5600 hinter einem
-  Rastenknopf (Abstand der Stellungen in Grad, Stellung 1 per „Aktuelle Stellung als
-  Stellung 1“ übernehmen; füllen die Stellungen den ganzen Kreis, geht es von der
-  letzten zur ersten weiter) oder ein normaler Drehschalter mit Widerstandskette
-  (gleiche Widerstände zwischen den Kontakten, Enden an GND und 3,3 V).
-- **Buttonnummern festhalten:** Jede Quelle (Taster, Matrix, Schieberegister, Encoder,
-  Logik) kann ihre erste Nummer mit `btn` festlegen. So bleiben die Zuordnungen im Spiel
-  gültig, wenn später etwas dazukommt.
+- **Short press on the config button:** access point on/off. Connect your phone, open
+  `http://192.168.4.1`. The button also acts as emergency stop for rumble motors.
+  Default access point names and passwords are in the templates (e.g. `Pico-Pedale` /
+  `pedale123`).
+- **Button combination instead of a config button:** in *Belegung* (configuration) enter
+  button numbers under *Tastenkombination*, e.g. `1, 2` – in `device.json`:
+  `"config_combo": {"buttons": [1, 2], "hold": 3}`. Holding them together for `hold`
+  seconds toggles the access point. Buttons, matrix and shift register inputs are
+  allowed; they are also sent to the PC, so pick a combination that does nothing harmful
+  in-game. Held while plugging in, it opens maintenance mode (directly wired buttons
+  only).
+- **Maintenance mode:** hold the config button while plugging in → `CIRCUITPY` stays
+  visible as a drive; the device cannot save in this mode.
+- **Saving while the drive is visible:** if `CIRCUITPY` currently belongs to the PC
+  (maintenance, setup, or files were just copied without a real restart), the new
+  configuration waits in NVM. The device restarts, enumerates with it right away and
+  writes it as `device.json`. The new configuration needs a config button or a button
+  combination for that.
+- **Changing the configuration:** tab *Belegung* → *Prüfen* (check) → *Speichern &
+  Neustart* (save & restart). The PC only reads the HID layout when the device is plugged
+  in, hence the restart. New button numbers or axes have to be re-bound once in-game.
+- **Pot axes:** smoothing (`smooth`, default 3) and hysteresis (`hyst`, default 0.5 %) keep
+  noisy pots still. With **center position** (`center`) 50 % sits in the middle and the
+  deadzone is around the center – for detented knobs, trim or Hall sticks. Calibrate: set
+  center, then turn to both end stops.
+- **AS5600 as encoder:** instead of a mechanical encoder (pins A and B) use an AS5600
+  behind a knob with detents, e.g. 3D-printed: one analog pin (`OUT`), contactless, no
+  bounce. In *Belegung → Encoder* choose type "AS5600 + Rastenknopf" and enter the number
+  of detents per revolution. Every detent sends a pulse on "right" or "left". The knob
+  must rest in a detent at power-up.
+- **Rotary selector (Stufenschalter):** fixed positions on *one* analog pin – one button
+  per position, exactly one pressed. Either an AS5600 behind a detent knob (position
+  spacing in degrees; capture position 1 with "Aktuelle Stellung als Stellung 1"; if the
+  positions fill the full circle it wraps from the last to the first), or a standard
+  rotary switch with a resistor ladder (equal resistors between the contacts, ends to
+  GND and 3.3 V).
+- **Fixed button numbers:** every source (buttons, matrix, shift register, encoder,
+  logic) can pin its first number with `btn`, so in-game bindings survive when you add
+  hardware later.
 
-### Pin-Suche
+### Pin finder
 
-Im Tab *Belegung* findet die **Pin-Suche** heraus, was wo angeschlossen ist:
+In tab *Belegung*, the **pin finder** figures out what is connected where:
 
-1. **„Taster & Encoder suchen“** – jeden Taster einmal drücken, jeden Encoder ein paar
-   Rasten drehen, Kippschalter umlegen. Erkannt wird: Taster, gehaltener Schalter (wird als
-   „Impuls“ vorgeschlagen), Encoder (zwei Pins, die abwechselnd schalten).
-2. **„Achsen suchen“** – Potis und Hall-Wippen ganz durchbewegen. In der ersten Sekunde
-   lernt die Suche das Grundrauschen, danach meldet sie Pins, die sich deutlich bewegen.
-3. Bei jedem Fund **„übernehmen“** (oder bei einem Taster „als Konfig-Taster“), Namen
-   anpassen, „Prüfen“, „Speichern & Neustart“.
+1. **"Taster & Encoder suchen"** (find buttons & encoders) – press every button once, turn
+   every encoder a few detents, flip toggle switches. Detected: buttons, held switches
+   (suggested as "pulse"), encoders (two pins switching alternately).
+2. **"Achsen suchen"** (find axes) – move pots and Hall paddles through their full range.
+   During the first second the finder learns the noise floor, then it reports pins that
+   move clearly.
+3. For every hit click **"übernehmen"** (apply) – or "als Konfig-Taster" for a button –
+   adjust names, *Prüfen*, *Speichern & Neustart*.
 
-Beobachtet werden nur freie Pins und nur als Eingang – Ausgänge schaltet die Suche nie.
-Strapping-Pins (ESP32-S3: GPIO0, 3, 45, 46), USB- und Flash-Pins bleiben außen vor. LEDs,
-WS2812, Rumble-Motoren, Wägezellen und Tastenmatrix lassen sich nicht erkennen und werden
-von Hand eingetragen. Die Suche endet nach 5 Minuten von selbst.
+Only free pins are watched, and only as inputs – the finder never drives outputs.
+Strapping pins (ESP32-S3: GPIO0, 3, 45, 46), USB and flash pins are skipped. LEDs, WS2812,
+rumble motors, load cells and button matrices cannot be detected and are entered by hand.
+The finder stops by itself after 5 minutes.
 
-### Wartungsmodus ohne Taster
+### Maintenance mode without a button
 
-Thonny lädt bei CircuitPython über das Laufwerk `CIRCUITPY` hoch – im Normalbetrieb ist es
-aus. Ohne den Konfigurationstaster zu drücken geht es so:
+Thonny uploads to CircuitPython via the `CIRCUITPY` drive, which is hidden in normal
+operation. Without pressing the config button:
 
-- Weboberfläche, Tab *Status*: **Neustart mit Laufwerk CIRCUITPY**, oder
-- in der Thonny-Shell (Strg+C, dann):
+- web interface, tab *Status*: **"Neustart mit Laufwerk CIRCUITPY"**, or
+- in the Thonny shell (Ctrl+C first):
   ```python
   import merker; merker.wartung()
   ```
 
-Das Gerät startet einmalig mit sichtbarem Laufwerk. Beim nächsten Einstecken ist alles
-wieder normal.
+The device restarts once with the drive visible. The next plug-in is back to normal.
 
-### Rückfall
+### Rollback
 
-Beim Speichern bleibt die alte Belegung als `device.bak.json` liegen und `cfg_pending`
-wird angelegt. Läuft das Gerät danach 15 Sekunden sauber, wird die Markierung gelöscht.
-Scheitert der Start zweimal hintereinander, holt `boot.py` die alte Belegung zurück. Der
-Grund steht in `fehler.txt` bzw. `boot_out.txt`.
+On saving, the old configuration is kept as `device.bak.json` and `cfg_pending` is
+created. Once the device has run cleanly for 15 seconds, the marker is removed. If the
+start fails twice in a row, `boot.py` restores the old configuration. The reason is in
+`fehler.txt` or `boot_out.txt`.
 
-## Vorlagen
+## Simulation Controls or Rx/Ry/Rz?
 
-| Datei | Gerät | Board | USB-PID |
+Every axis can report as a regular joystick axis (X … Rz, Slider) or as a *Simulation
+Control* (`"usage": "brake"` etc., "Sim: Bremse" in the browser). The latter describes
+pedals and wheels more accurately, but operating systems only support some of them and
+map them onto regular axes. The templates therefore use Rx/Ry/Rz, which is proven to work.
+
+What the systems make of them (two axes on the same target: the second one is dropped):
+
+| Axis | Linux (`hid-input.c`) | Windows (DirectInput, as documented by MAME) |
+|---|---|---|
+| X, Y, Z, Rx, Ry, Rz | same name | same name |
+| Slider / Dial | ABS_THROTTLE / ABS_RUDDER | Slider (two available) |
+| Sim: accelerator | ABS_GAS | **Y** |
+| Sim: brake | ABS_BRAKE | **Rz** |
+| Sim: steering | ABS_WHEEL | **X** |
+| Sim: throttle | ABS_THROTTLE | Slider |
+| Sim: rudder | ABS_RUDDER | **Rz** |
+| Sim: clutch, toe brake, aileron/elevator, collective | – missing | – missing (confirmed on hardware for the clutch) |
+
+So Sim accelerator and Sim brake collide with Y or Rz on Windows. *Prüfen* in the web
+interface warns about such cases. Report a clutch as **Slider**.
+
+## Templates
+
+| File | Device | Board | USB PID |
 |---|---|---|---|
-| `pedale.json` | 3 Pedale: AS5600 Gas/Kupplung, Wägezelle Bremse, 2 Rumble-Motoren – wie Pedale v9.9 | Pico W | 0x4712 |
-| `buttonbox.json` | 11 Taster/Schalter, 3 Potis, 16 Logikbuttons ab 23, Anlasser-LED – Buttonnummern wie Buttonbox v2.1 | Pico 2 W | 0x4711 |
-| `lenkrad.json` | 2 Schaltwippen, 4×4-Matrix, 2 Encoder, 2 Kupplungswippen (Hall), 10 WS2812, Bluetooth | ESP32-S3 (DevKitC-1, YD-ESP32-S3 …) | 0x4713 |
+| `pedale.json` | 3 pedals: AS5600 throttle/clutch, load cell brake, 2 rumble motors – like pedals v9.9 | Pico W | 0x4712 |
+| `buttonbox.json` | 11 buttons/switches, 3 pots, 16 logic buttons from 23, starter LED – button numbers like button box v2.1 | Pico 2 W | 0x4711 |
+| `lenkrad.json` | 2 shift paddles, 4×4 matrix, 2 encoders, 2 clutch paddles (Hall), 10 WS2812, Bluetooth | ESP32-S3 (DevKitC-1, YD-ESP32-S3 …) | 0x4713 |
 
-Die Pins im Lenkrad sind ein Vorschlag – beim Verdrahten an das eigene Board anpassen.
+The steering wheel pins are a suggestion – adapt them to your board when wiring.
 
-**Pinnamen:** Derselbe Chip-Pin heißt je nach Board `IO21` (Espressif DevKitC-1), `GPIO21`
-(YD-ESP32-S3 und viele andere) oder `GP21` (Pico). Die Firmware probiert die anderen
-Schreibweisen von selbst, wenn das Board einen Namen nicht kennt – die Vorlagen passen
-deshalb auf jedes Board. Welche Namen ein Board hat, zeigt in der Thonny-Shell
-`import board; print(dir(board))`.
+**Pin names:** the same chip pin is called `IO21` (Espressif DevKitC-1), `GPIO21`
+(YD-ESP32-S3 and many others) or `GP21` (Pico). If a board does not know a name, the
+firmware tries the other spellings – so the templates fit any board. To see a board's
+pin names, run `import board; print(dir(board))` in the Thonny shell.
 
-### Umstieg von den alten Firmwares
+### Device name on Windows
 
-`installieren.py` erkennt die alte Pedal-Firmware (v9) und die Buttonbox (v2) und
-übernimmt sie:
+The device reports its USB product name (*Belegung → USB-Produktname*) as the name of
+its HID interface, which is what Windows shows under *Set up USB game controllers*.
+Windows caches that name per VID/PID the first time it sees a device. If an old name
+("CircuitPython HID") sticks, delete the cached entries in PowerShell (as administrator)
+and replug:
 
-1. Wartungsmodus von Hand – die alten Firmwares können das noch nicht über die Konsole:
-   Taster beim Einstecken halten (Pedale **GP3**, Buttonbox **GP15**).
-2. `python3 installieren.py` – eine Vorlage braucht es nicht.
+```powershell
+$k = "HKCU:\System\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM",
+     "HKLM:\SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM"
+Get-ChildItem $k -ErrorAction SilentlyContinue | Where-Object {
+    (Get-ItemProperty $_.PSPath).OEMName -eq "CircuitPython HID" -or $_.PSChildName -eq "VID_0000&PID_0000"
+} | Remove-Item -Recurse
+```
 
-Übernommen wird:
-- **Belegung** aus der alten `settings.py`: Pins, WLAN-Name und -Passwort, Rumble-Pins,
-  -Namen und SimHub-Namen, Totzone, Filter …
-- **USB-PID, Gerätetyp und HID-Achsen** aus der alten `boot.py` – die Achsen heißen im
-  Spiel wie bisher (v9.7: Gamepad X/Y/Z, v9.9: Joystick Rx/Ry/Rz, Buttonbox: Gamepad
-  Rx/Ry/Rz, Buttons 1–11, Logik ab 23).
-- **Kalibrierung** der Pedale (auch Kennlinien) und der Buttonbox-Achsen, **Logikbuttons,
-  unterdrückte Inputs und LED-Logik** der Buttonbox. `rumble.json` bleibt, wie es ist.
-- Die alten Dateien landen in **`alt/`** auf dem Board. Zurück zur alten Firmware: deren
-  Dateien aus `alt/` wieder ins Hauptverzeichnis kopieren und die neuen löschen.
+For Bluetooth, also remove the pairing and pair again.
 
-Mit `--keine-uebernahme` nimmt das Skript stattdessen die angegebene Vorlage.
+### Migrating from the old firmwares
 
-## Telemetrie (SimHub & Co.)
+`installieren.py` recognizes the old pedal firmware (v9) and button box (v2) and migrates
+them:
 
-Das Gerät nimmt über seinen **zweiten** COM-Port (Datenkanal; beim ESP32-S3 über den
-einzigen COM-Port) Zeilen der Form
-`name=wert;name=wert` mit `\n` am Ende an – von SimHub, einem eigenen Skript oder jedem
-anderen Programm. In SimHub dafür ein *Custom Serial Device* auf diesen Port legen. Die
-Namen sind frei und gelten überall: in Logikausdrücken, in LED-Regeln, für Rumble und Drehzahlband.
+1. Enable maintenance mode by hand – the old firmwares cannot do it over the console:
+   hold the button while plugging in (pedals **GP3**, button box **GP15**).
+2. `python3 installieren.py` – no template needed.
 
-Für das Drehzahlband am Lenkrad braucht es z. B. `rpm`, `rpmmax` und `pit`. In SimHub als
-NCalc-Formel sinngemäß:
+Migrated: pins, Wi-Fi name and password, rumble settings and SimHub names, deadzones and
+filters from the old `settings.py`; USB PID, device type and HID axes from the old
+`boot.py` (games see the same axes as before); pedal calibration including curves,
+button box calibration, logic buttons, suppressed inputs and LED logic. The old files
+are moved to **`alt/`** on the board. `--keine-uebernahme` uses the given template
+instead.
+
+## Telemetry (SimHub & co.)
+
+The device accepts lines of the form `name=value;name=value` terminated by `\n` on its
+**second** serial port (data port; on the ESP32-S3 on the single console port) – from
+SimHub, your own script or any other program. In SimHub, add a *Custom Serial Device*
+on that port. Names are free-form and usable everywhere: in logic expressions, LED rules,
+rumble and the rev light bar.
+
+The rev lights on the wheel need e.g. `rpm`, `rpmmax` and `pit`. As an NCalc formula in
+SimHub, roughly:
 
 ```
 'rpm=' + [Rpms] + ';rpmmax=' + [CarSettings_MaxRPM] + ';pit=' + [PitLimiterOn] + '\n'
 ```
 
-(Die Property-Namen in SimHub nachschlagen – sie unterscheiden sich je nach Version.)
+(Check the property names in SimHub – they differ between versions.)
 
-## Tests auf dem PC
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| A Sim axis is missing in-game | not supported by the OS, or collides with another axis – see the table above |
+| A game sees phantom buttons or a stuck UI cursor | try *Belegung → Allgemein*: untick "USB-Report mit Report-ID" – the device then sends byte-for-byte like the old firmwares, which helps if a game misreads the report ID |
+| Web page does not load while the device is plugged into a PC with no game open | fixed: a host that does not poll the device no longer stalls the firmware |
+| Bluetooth is slow on a power bank | fixed: reports no longer wait for a USB host that is not there |
+| Windows shows "CircuitPython HID" | see *Device name on Windows* |
+
+## Tests on the PC
 
 ```
-python3 tests/test_firmware.py     # Logik, Descriptor, Pins, Kalibrierung, Installer …
-python3 tests/sim.py buttonbox     # ganzes Gerät simuliert, http://localhost:8765
+python3 tests/test_firmware.py     # logic, descriptor, pins, calibration, installer …
+python3 tests/sim.py buttonbox     # whole device simulated, http://localhost:8765
 ```
 
-Der Simulator ersetzt die CircuitPython-Module durch Nachbauten und das Laufwerk durch
-ein temporäres Verzeichnis. Die Weboberfläche läuft echt, ein Neustart nach dem
-Speichern startet den Prozess mit `boot.py` neu. `hid_fehler.txt` im Simulationsordner
-meldet Reports, deren Länge nicht zum Descriptor passt.
+The simulator replaces the CircuitPython modules with stand-ins and the drive with a
+temporary directory. The web interface is real; a restart after saving re-runs the
+process including `boot.py`. `hid_fehler.txt` in the simulation folder reports HID
+reports whose length does not match the descriptor.
 
-## Lizenz
+## License
 
-UniversalGC steht unter der **GNU General Public License v3.0 oder neuer** (siehe
-[`LICENSE`](LICENSE)). Nutzen, ändern und weitergeben ist erlaubt, auch kommerziell –
-wer die Firmware aber weitergibt, etwa auf verkauften Geräten, muss den vollständigen
-Quellcode seiner Version unter derselben Lizenz mitliefern.
+UniversalGC is licensed under the **GNU General Public License v3.0 or later** (see
+[`LICENSE`](LICENSE)). You may use, modify and share it, commercially too – but if you
+distribute the firmware, for example on devices you sell, you must provide the complete
+source code of your version under the same license.
