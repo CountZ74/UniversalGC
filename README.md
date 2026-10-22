@@ -85,8 +85,9 @@ Notes for the ESP32-S3:
 ## Installation
 
 1. Install CircuitPython 10.x on the board (https://circuitpython.org/downloads).
-2. Download the **release package** (`UniversalGC-<version>-cp10.zip`) from the Releases
-   page and unzip it. It contains precompiled modules – which saves noticeable memory on
+2. Download the **release package** (`UniversalGC-<version>-cp10.zip` – `cp10` means
+   CircuitPython 10.x; precompiled `.mpy` files only work with that major version) from
+   the Releases page and unzip it. It contains precompiled modules – which saves noticeable memory on
    the Pico W – and the required libraries.
 3. Install:
    ```bash
