@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """
-app.py - UniversalGC v1.0, universelle Gamecontroller-Firmware fuer CircuitPython
+app.py - UniversalGC v1.1, universelle Gamecontroller-Firmware fuer CircuitPython
 =========================================================================
 
 Eine Firmware fuer jede Art von Gamecontroller, nach dem Vorbild von FreeJoy:
@@ -59,7 +59,7 @@ import kalib
 import logik
 from tele import Telemetrie
 
-VERSION = "1.0"
+VERSION = "1.1"
 CAL_FILE = "/calibration.json"
 LOGIC_FILE = "/logic.json"
 BESTAETIGT_NACH = 15.0     # so lange muss eine neue Belegung sauber laufen
