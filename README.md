@@ -350,6 +350,25 @@ temporary directory. The web interface is real; a restart after saving re-runs t
 process including `boot.py`. `hid_fehler.txt` in the simulation folder reports HID
 reports whose length does not match the descriptor.
 
+## How this was built
+
+UniversalGC was written with AI assistance: the code comes from
+[Claude Code](https://claude.ai/code), every commit says so (`Co-Authored-By`). I set the
+requirements, built the hardware, tested every step on real devices and decided what
+goes in. Without that help I would never have managed a project of this size – I would
+still be fighting FreeJoy and hunting for genuine Blue Pills that no longer exist.
+
+How it is checked:
+- running daily on three real devices: pedals (Pico W), button box (Pico 2 W) and a
+  steering wheel (ESP32-S3, USB and Bluetooth). Many fixes in the history came from
+  exactly that – calibration accuracy, USB and Bluetooth timing, Windows device names;
+- an automated test suite and a simulator for the whole device (see *Tests on the PC*),
+  run by GitHub Actions on every push;
+- features that have not run on hardware yet are marked as such in the release notes.
+
+Bug reports and pull requests are welcome – AI-assisted or not, as long as they are
+tested.
+
 ## License
 
 UniversalGC is licensed under the **GNU General Public License v3.0 or later** (see

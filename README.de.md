@@ -321,6 +321,27 @@ ein temporäres Verzeichnis. Die Weboberfläche läuft echt, ein Neustart nach d
 Speichern startet den Prozess mit `boot.py` neu. `hid_fehler.txt` im Simulationsordner
 meldet Reports, deren Länge nicht zum Descriptor passt.
 
+## Wie das entstanden ist
+
+UniversalGC ist mit KI-Unterstützung entstanden: Der Code stammt von
+[Claude Code](https://claude.ai/code), jeder Commit weist das aus (`Co-Authored-By`). Ich
+habe die Anforderungen gestellt, die Hardware gebaut, jeden Schritt an echten Geräten
+getestet und entschieden, was hineinkommt. Ohne diese Hilfe hätte ich ein Projekt in
+dieser Größe nie hinbekommen – ich würde mich immer noch mit FreeJoy und nicht mehr
+erhältlichen Original-Bluepills herumärgern.
+
+Wie es geprüft wird:
+- im täglichen Einsatz an drei echten Geräten: Pedale (Pico W), Buttonbox (Pico 2 W) und
+  Lenkrad (ESP32-S3, USB und Bluetooth). Viele Korrekturen in der Versionsgeschichte
+  kamen genau daher – Kalibriergenauigkeit, USB- und Bluetooth-Timing, Gerätenamen unter
+  Windows;
+- eine automatische Testsuite und ein Simulator für das ganze Gerät (siehe *Tests auf
+  dem PC*), die GitHub Actions bei jedem Push laufen lässt;
+- was noch nicht auf Hardware lief, steht in den Release-Notizen.
+
+Fehlermeldungen und Pull Requests sind willkommen – mit oder ohne KI, solange sie
+getestet sind.
+
 ## Lizenz
 
 UniversalGC steht unter der **GNU General Public License v3.0 oder neuer** (siehe
