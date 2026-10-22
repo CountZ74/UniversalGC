@@ -45,8 +45,8 @@ Spiel danach neu zuordnen.
 
 **Linux** kennt von den Simulation Controls nur Gas, Bremse, Lenkung, Schubhebel und
 Seitenruder. Kupplung, Fußbremse, Quer-/Höhenruder und Kollektiv lässt der Kernel ohne
-Meldung weg – die Achse fehlt dann einfach. Unter Linux die Kupplung deshalb als Rz oder
-Slider melden.
+Meldung weg – die Achse fehlt dann einfach. Auch **Windows** erkennt die Sim-Kupplung
+nicht (am Gerät getestet). Die Kupplung deshalb immer als Rz oder Slider melden.
 
 ## Welcher Chip?
 
