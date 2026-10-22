@@ -50,6 +50,48 @@ AXIS_USAGES = {
 }
 DOPPELT_ERLAUBT = ("slider", "toebrake")
 
+# Was die Betriebssysteme aus den Achsen machen. Zwei Achsen auf demselben
+# Ziel: die zweite faellt weg. None: das System kennt die Achse nicht.
+#   Linux:   drivers/hid/hid-input.c - Generic Desktop 0x30..0x38 direkt auf
+#            ABS_X..ABS_WHEEL (Slider = ABS_THROTTLE, Dial = ABS_RUDDER),
+#            von den Simulation Controls nur Ruder, Throttle, Gas, Bremse,
+#            Lenkung; doppelte Codes werden verworfen.
+#   Windows: Zuordnung des HID-Treibers fuer DirectInput, wie in MAME
+#            (src/osd/modules/input/input_dinput.cpp) beschrieben; Slider
+#            gibt es zweimal.
+LINUX_ACHSE = {"x": "ABS_X", "y": "ABS_Y", "z": "ABS_Z", "rx": "ABS_RX",
+               "ry": "ABS_RY", "rz": "ABS_RZ", "slider": "ABS_THROTTLE",
+               "dial": "ABS_RUDDER", "wheel": "ABS_WHEEL",
+               "throttle": "ABS_THROTTLE", "rudder": "ABS_RUDDER",
+               "accelerator": "ABS_GAS", "brake": "ABS_BRAKE",
+               "steering": "ABS_WHEEL"}
+WINDOWS_ACHSE = {"x": "X", "y": "Y", "z": "Z", "rx": "Rx", "ry": "Ry", "rz": "Rz",
+                 "slider": "Slider", "dial": "Slider", "throttle": "Slider",
+                 "rudder": "Rz", "accelerator": "Y", "brake": "Rz", "steering": "X"}
+
+
+def achsen_hinweise(c):
+    """Warnungen, wenn eine Achse unter Linux oder Windows nicht ankommt."""
+    h = []
+    for system, tabelle, platz in (("Linux", LINUX_ACHSE, {}),
+                                   ("Windows", WINDOWS_ACHSE, {"Slider": 2})):
+        belegt = {}
+        for i, a in enumerate(c["axes"]):
+            u = str(a.get("usage", "")).lower()
+            name = a.get("name") or "Achse %d" % (i + 1)
+            ziel = tabelle.get(u)
+            if ziel is None:
+                h.append("%s: %s (%s) kennt %s nicht - die Achse fehlt dort"
+                         % (system, name, u, system))
+                continue
+            belegt.setdefault(ziel, []).append(name)
+        for ziel, namen in belegt.items():
+            if len(namen) > platz.get(ziel, 1):
+                h.append("%s: %s landen alle auf %s - nur %s bleibt"
+                         % (system, " und ".join(namen), ziel,
+                            " und ".join(namen[:platz.get(ziel, 1)])))
+    return h
+
 # Joystick statt Gamepad ist der Normalfall: Automobilista 2 und Project CARS
 # steuern ihr Menue ueber die X/Y-Achsen von Gamepads (siehe Pedale v9.8).
 DEVICE_USAGES = {"joystick": 0x04, "gamepad": 0x05}

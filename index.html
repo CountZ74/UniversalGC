@@ -555,12 +555,12 @@ async function kSave(){const b=$('sbtn');b.textContent='…';const d=await post(
 const USAGES=['x','y','z','rx','ry','rz','slider','dial','wheel'];
 /* Simulation Controls: beschreiben das Gerät treffender, werden aber nicht von
    jedem Spiel gleich zugeordnet - je Spiel testen, bei Problemen zurück auf Rx/Ry/Rz. */
-// Linux (hid-input) kennt von Page 0x02 nur Ruder, Throttle, Gas, Bremse und
-// Lenkung - die uebrigen verschwinden dort ohne Meldung.
-const SIM_USAGES=[['accelerator','Sim: Gas'],['brake','Sim: Bremse'],['clutch','Sim: Kupplung (weder Linux noch Windows – besser Rz/Slider)'],
+// Linux (hid-input) und Windows (DirectInput) kennen von Page 0x02 nur Ruder,
+// Throttle, Gas, Bremse und Lenkung - siehe cfg.LINUX_ACHSE/WINDOWS_ACHSE.
+const SIM_USAGES=[['accelerator','Sim: Gas'],['brake','Sim: Bremse'],['clutch','Sim: Kupplung (weder Linux noch Windows)'],
   ['steering','Sim: Lenkung'],['throttle','Sim: Schubhebel'],['rudder','Sim: Seitenruder'],
-  ['toebrake','Sim: Fußbremse (nicht unter Linux)'],['aileron','Sim: Querruder (nicht unter Linux)'],['elevator','Sim: Höhenruder (nicht unter Linux)'],
-  ['collective','Sim: Kollektiv (nicht unter Linux)']];
+  ['toebrake','Sim: Fußbremse (weder Linux noch Windows)'],['aileron','Sim: Querruder (weder Linux noch Windows)'],['elevator','Sim: Höhenruder (weder Linux noch Windows)'],
+  ['collective','Sim: Kollektiv (weder Linux noch Windows)']];
 const USAGE_OPTS=USAGES.map(u=>[u,u.toUpperCase().replace('SLIDER','Slider').replace('DIAL','Dial').replace('WHEEL','Wheel')]).concat(SIM_USAGES);
 /* Wie pins.py: IO21, GPIO21 und GP21 meinen denselben Chip-Pin. */
 const PRAEF=['GPIO','IO','GP'];
@@ -666,7 +666,8 @@ function bauForm(){
   h+='<div class="a"><b>Achsen</b> <span class="sub">16 bit, höchstens 8</span>'+
     '<div class="sub" style="margin:4px 0 6px">HID-Achse „Sim: …“ = Simulation Controls. Beschreibt Pedale und Lenkrad treffender, '+
     'wird aber nicht von jedem Spiel erkannt – ausprobieren, bei Problemen zurück auf Rx/Ry/Rz. '+
-    'Linux kennt nur Sim: Gas, Bremse, Lenkung, Schubhebel und Seitenruder. Die Sim-Kupplung erkennen weder Linux noch Windows – Kupplung als Rz oder Slider melden.</div>';
+    'Linux und Windows kennen nur Sim: Gas, Bremse, Lenkung, Schubhebel und Seitenruder – und legen sie auf normale Achsen '+
+    '(Windows: Gas = Y, Bremse = Rz, Lenkung = X). „Prüfen“ warnt, wenn dadurch eine Achse wegfällt. Kupplung am besten als Slider.</div>';
   K.axes.forEach((a,i)=>{const t=a.type||'pot',p='axes.'+i+'.';
     h+='<div class="item">'+kopf('Achse '+(i+1),'axes',i)+
     '<div class="row c3">'+selF(p+'type','Typ',[['pot','Poti / Hall'],['as5600','AS5600 (Winkel)'],['hx711','Wägezelle HX711'],['encoder','Encoder']])+selF(p+'usage','HID-Achse',USAGE_OPTS)+txtF(p+'name','Name')+'</div>';
@@ -733,8 +734,9 @@ function aufbereiten(){
 async function pruefen(){
   const d=await post('/pruefen',aufbereiten());
   if(!d){melde('cmsg',false,'Keine Antwort');return;}
-  melde('cmsg',d.ok,d.ok?'In Ordnung – '+esc(d.info):'<b>Fehler:</b><br>'+d.f.map(esc).join('<br>'));
+  melde('cmsg',d.ok,(d.ok?'In Ordnung – '+esc(d.info):'<b>Fehler:</b><br>'+d.f.map(esc).join('<br>'))+warnText(d));
 }
+function warnText(d){return d.w&&d.w.length?'<br><br><b>Achtung:</b><br>'+d.w.map(esc).join('<br>'):'';}
 async function speichern(){
   const d=await post('/config',aufbereiten());
   if(!d){melde('cmsg',false,'Keine Antwort');return;}

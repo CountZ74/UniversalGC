@@ -630,7 +630,7 @@ class App:
             return {"ok": False, "f": ["JSON fehlerhaft: %s" % e]}
         f = cfg.validate(neu, self.pins.pin_id, self.pins.analog_ok)
         _, n, _ = cfg.button_layout(neu)
-        return {"ok": not f, "f": f,
+        return {"ok": not f, "f": f, "w": cfg.achsen_hinweise(neu),
                 "info": "%d Buttons, %d Achsen, %d Byte Report" %
                         (cfg.buttons_im_report(neu), len(neu["axes"]),
                          cfg.report_laenge(neu))}

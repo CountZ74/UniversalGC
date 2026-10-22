@@ -43,10 +43,21 @@ läuft nachweislich. Zum Ausprobieren die HID-Achse im Browser umstellen, speich
 Spiel testen; bei Problemen zurückstellen. Wie bei jeder Änderung am Aufbau die Achsen im
 Spiel danach neu zuordnen.
 
-**Linux** kennt von den Simulation Controls nur Gas, Bremse, Lenkung, Schubhebel und
-Seitenruder. Kupplung, Fußbremse, Quer-/Höhenruder und Kollektiv lässt der Kernel ohne
-Meldung weg – die Achse fehlt dann einfach. Auch **Windows** erkennt die Sim-Kupplung
-nicht (am Gerät getestet). Die Kupplung deshalb immer als Rz oder Slider melden.
+Was die Systeme daraus machen (zwei Achsen auf demselben Ziel: die zweite fällt weg):
+
+| Achse | Linux (`hid-input.c`) | Windows (DirectInput, laut MAME) |
+|---|---|---|
+| X, Y, Z, Rx, Ry, Rz | gleichnamig | gleichnamig |
+| Slider / Dial | ABS_THROTTLE / ABS_RUDDER | Slider (zweimal vorhanden) |
+| Sim: Gas | ABS_GAS | **Y** |
+| Sim: Bremse | ABS_BRAKE | **Rz** |
+| Sim: Lenkung | ABS_WHEEL | **X** |
+| Sim: Schubhebel | ABS_THROTTLE | Slider |
+| Sim: Seitenruder | ABS_RUDDER | **Rz** |
+| Sim: Kupplung, Fußbremse, Quer-/Höhenruder, Kollektiv | – fehlt | – fehlt (am Gerät bestätigt für die Kupplung) |
+
+Also: Sim-Gas und Sim-Bremse zusammen mit Rz oder Y kollidieren unter Windows. „Prüfen“
+in der Weboberfläche warnt bei solchen Fällen. Kupplung am besten als **Slider** melden.
 
 ## Welcher Chip?
 

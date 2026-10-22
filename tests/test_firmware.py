@@ -188,6 +188,23 @@ def test_ohne_report_id_wie_v21():
     check("mit Report-ID: Standard", cfg.report_id(preset("buttonbox")) == cfg.REPORT_ID)
 
 
+def test_achsen_hinweise():
+    def h(*usages):
+        return cfg.achsen_hinweise(cfg.normalize({"axes": [
+            {"type": "pot", "pin": "GP26", "usage": u, "name": u} for u in usages]}))
+    check("Hinweise: Rx/Ry/Rz ohne Warnung", h("rx", "ry", "rz") == [])
+    w = h("accelerator", "brake", "clutch")
+    check("Hinweise: Sim-Kupplung fehlt unter Linux und Windows",
+          sum("clutch" in x and "fehlt" in x for x in w) == 2)
+    w = h("accelerator", "brake", "rz")
+    check("Hinweise: Sim-Bremse und Rz kollidieren unter Windows %s" % w,
+          len(w) == 1 and w[0].startswith("Windows") and "Rz" in w[0])
+    check("Hinweise: Sim-Achsen + Slider passt", h("accelerator", "brake", "slider") == [])
+    w = h("slider", "slider")
+    check("Hinweise: zwei Slider - Windows ja, Linux nein",
+          len(w) == 1 and w[0].startswith("Linux"))
+
+
 def test_simulation_controls():
     c = cfg.normalize({"config_pin": "GP15", "axes": [
         {"type": "pot", "pin": "GP26", "usage": "accelerator"},
